@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "local-server": {
+      "type": "streamable-http",
+      "url": "http://localhost:6789/mcp"
+    },
+    "production-server": {
+      "type": "streamable-http",
+      "url": "https://mcp-app-bench.onrender.com/mcp"
+    }
+  }
+}

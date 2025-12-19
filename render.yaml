@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: mcp-app-bench
+    runtime: node
+    region: virginia
+    plan: free
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+

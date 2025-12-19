@@ -1,0 +1,24 @@
+# Dependencies
+node_modules
+pnpm-lock.yaml
+
+# Build outputs
+dist
+build
+*.js.map
+
+# Assets
+assets
+
+# Public/static files
+public
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+
+# IDE (excluding settings we want to format)
+.idea
+
