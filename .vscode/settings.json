@@ -30,5 +30,12 @@
   },
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  },
+  "cSpell.words": [
+    "oncalltool",
+    "ontoolcancelled",
+    "ontoolinput",
+    "ontoolinputpartial",
+    "ontoolresult"
+  ]
 }

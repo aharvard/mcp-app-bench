@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from "vite"
 import react from "@vitejs/plugin-react"
 import fg from "fast-glob"
 import path from "node:path"
+import fs from "node:fs"
 
 function buildInputs() {
   const files = fg.sync("src/apps/**/index.{tsx,jsx}", { dot: false })
@@ -190,10 +191,67 @@ if (!window.__vite_plugin_react_preamble_installed__) {
   }
 }
 
+// Plugin to generate self-contained HTML files for production
+function inlineHtmlPlugin(entries: Record<string, string>): Plugin {
+  return {
+    name: "inline-html-plugin",
+    apply: "build",
+    writeBundle(options, bundle) {
+      const outDir = options.dir || "dist/static"
+
+      for (const name of Object.keys(entries)) {
+        const jsFile = `${name}.js`
+        const cssFile = `${name}.css`
+
+        const jsBundle = bundle[jsFile]
+        const cssBundle = bundle[cssFile]
+
+        if (!jsBundle || jsBundle.type !== "chunk") {
+          console.warn(`[inline-html] No JS bundle found for ${name}`)
+          continue
+        }
+
+        const jsCode = jsBundle.code
+        const cssCode =
+          cssBundle && cssBundle.type === "asset"
+            ? (cssBundle.source as string)
+            : ""
+
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>${cssCode}</style>
+</head>
+<body>
+  <div id="${name}-root"></div>
+  <script type="module">${jsCode}</script>
+</body>
+</html>`
+
+        const htmlPath = path.join(outDir, `${name}.html`)
+        fs.writeFileSync(htmlPath, html)
+        console.log(`[inline-html] Generated ${htmlPath}`)
+
+        // Remove the separate JS and CSS files
+        const jsPath = path.join(outDir, jsFile)
+        const cssPath = path.join(outDir, cssFile)
+        if (fs.existsSync(jsPath)) fs.unlinkSync(jsPath)
+        if (fs.existsSync(cssPath)) fs.unlinkSync(cssPath)
+      }
+    },
+  }
+}
+
 const inputs = buildInputs()
 
 export default defineConfig(({}) => ({
-  plugins: [react(), multiEntryDevEndpoints({ entries: inputs })],
+  plugins: [
+    react(),
+    multiEntryDevEndpoints({ entries: inputs }),
+    inlineHtmlPlugin(inputs),
+  ],
   server: {
     port: 4444,
     strictPort: true,
@@ -206,13 +264,23 @@ export default defineConfig(({}) => ({
   },
   build: {
     target: "es2022",
-    sourcemap: true,
+    sourcemap: false,
     minify: "esbuild",
-    outDir: "assets",
+    outDir: "dist/static",
     assetsDir: ".",
+    cssCodeSplit: true,
     rollupOptions: {
       input: inputs,
       preserveEntrySignatures: "strict",
+      output: {
+        // Keep original names for easier HTML generation
+        entryFileNames: "[name].js",
+        chunkFileNames: "[name]-[hash].js",
+        assetFileNames: "[name][extname]",
+        // Inline everything - no external chunks
+        manualChunks: undefined,
+        inlineDynamicImports: false,
+      },
     },
   },
 }))

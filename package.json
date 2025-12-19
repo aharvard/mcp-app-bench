@@ -5,15 +5,17 @@
   "description": "MCP App Bench server",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && pnpm copy:static",
-    "copy:static": "cp -r src/static dist/static",
+    "build": "tsc && pnpm build:apps",
+    "build:apps": "vite build",
     "start": "node dist/index.js",
+    "dev": "concurrently -k -n server,vite -c blue,magenta \"pnpm dev:server\" \"pnpm dev:apps\"",
     "dev:server": "vite-node src/index.ts",
-    "serve:apps": "serve -s ./assets -p 4444 --cors",
+    "dev:apps": "vite build --watch",
+    "serve:apps": "vite",
     "inspect:dev": "pnpx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server local-server",
     "inspect:prod": "pnpx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server production-server",
-    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"scripts/**/*.{ts,mts,js}\" \"*.{json,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"scripts/**/*.{ts,mts,js}\" \"*.{json,md}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"*.{json,md}\"",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -25,6 +27,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^0.2.2",
     "@modelcontextprotocol/sdk": "^1.18.2",
     "chalk": "^5.6.2",
     "cors": "^2.8.5",

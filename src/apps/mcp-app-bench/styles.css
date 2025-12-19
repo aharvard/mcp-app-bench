@@ -1,0 +1,236 @@
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #18181b;
+  --bg-terminal: #0a0a0a;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --border: #3f3f46;
+}
+
+.theme-light {
+  --bg-primary: #fafafa;
+  --bg-terminal: #f4f4f5;
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --border: #e4e4e7;
+}
+
+.theme-dark {
+  --bg-primary: #18181b;
+  --bg-terminal: #0a0a0a;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --border: #3f3f46;
+}
+
+html {
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 24px 24px 0;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  font-family: "Instrument Serif", system-ui, sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+h1 {
+  font-size: min(max(4rem, 8vw), 8rem);
+  text-align: center;
+  line-height: 0.95;
+  margin: 2rem auto 3rem;
+  letter-spacing: -0.02em;
+}
+
+.host-info-subtitle {
+  text-align: center;
+  margin: 0 0 2rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.actions {
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.actions-heading {
+  margin: 0 0 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+
+.actions-buttons {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--bg-primary);
+  font-family: ui-monospace, monospace;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn code {
+  color: var(--bg-primary);
+  opacity: 0.7;
+  font-size: 0.75rem;
+}
+
+.action-btn:hover code {
+  color: var(--text-primary);
+  opacity: 0.7;
+}
+
+.action-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.action-btn:disabled:hover {
+  background: var(--bg-primary);
+  transform: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .action-btn {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.theme-light .action-btn:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.terminal {
+  margin: 1.5rem -24px 0;
+  background: var(--bg-terminal);
+  border-top: 1px solid var(--border);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.theme-light .terminal {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.terminal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: stretch;
+}
+
+.terminal-grid > .terminal-section {
+  padding: 1.5rem 24px;
+}
+
+.terminal-grid > .terminal-section:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+@media (max-width: 700px) {
+  .terminal-grid > .terminal-section:not(:last-child) {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.terminal-section h2 {
+  margin: 0 0 0.75rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #71717a;
+}
+
+.terminal-section pre {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  overflow: visible;
+  font-family: ui-monospace, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* JSON syntax highlighting */
+.json-key {
+  color: #a78bfa;
+}
+.json-string {
+  color: #86efac;
+}
+.json-number {
+  color: #fcd34d;
+}
+.json-boolean {
+  color: #67e8f9;
+}
+.json-null {
+  color: #f87171;
+}
+.json-punctuation {
+  color: #a1a1aa;
+}
+
+.theme-light .json-key {
+  color: #7c3aed;
+}
+.theme-light .json-string {
+  color: #16a34a;
+}
+.theme-light .json-number {
+  color: #ca8a04;
+}
+.theme-light .json-boolean {
+  color: #0891b2;
+}
+.theme-light .json-null {
+  color: #dc2626;
+}
+.theme-light .json-punctuation {
+  color: #71717a;
+}
