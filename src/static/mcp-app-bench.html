@@ -545,11 +545,8 @@
           .getElementById('btn-tools-call')
           .addEventListener('click', function () {
             sendRequest('tools/call', {
-              name: 'example_tool',
-              arguments: {
-                param1: 'value1',
-                param2: 42
-              }
+              name: 'get-server-time',
+              arguments: {}
             })
               .then(function (result) {
                 console.log('[MCP App Bench] tools/call response:', result);
