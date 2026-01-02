@@ -117,5 +117,36 @@ export function initMcpAppServer(): McpServer {
     }
   )
 
+  server.registerTool(
+    "get-server-time",
+    {
+      title: "Get Server Time",
+      description: "Returns the current server time",
+      inputSchema: {},
+      outputSchema: {
+        timestamp: z.string().describe("ISO 8601 formatted server timestamp"),
+        timezone: z.string().describe("Server timezone"),
+        unixMs: z.number().describe("Unix timestamp in milliseconds"),
+      },
+    },
+    async () => {
+      const now = new Date()
+      const structuredContent = {
+        timestamp: now.toISOString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        unixMs: now.getTime(),
+      }
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Server time: ${now.toISOString()}`,
+          },
+        ],
+        structuredContent,
+      }
+    }
+  )
+
   return server
 }
