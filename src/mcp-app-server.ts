@@ -68,7 +68,12 @@ export function initMcpAppServer(): McpServer {
             ui: {
               prefersBorder: true,
               csp: {
-                resourceDomains: [BASE_URL],
+                resourceDomains: [
+                  BASE_URL,
+                  "https://fonts.googleapis.com",
+                  "https://fonts.gstatic.com",
+                  "https://cdnjs.cloudflare.com",
+                ],
               },
             },
           },
