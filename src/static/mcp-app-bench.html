@@ -279,6 +279,10 @@
           <h2>Tool Data</h2>
           <pre class="language-json"><code class="language-json" id="tool-data-content">Waiting...</code></pre>
         </div>
+        <div class="terminal-section">
+          <h2>🔍 Debug Log</h2>
+          <pre style="font-family: ui-monospace, monospace; font-size: 0.875rem; color: var(--text-secondary); white-space: pre-wrap; margin: 0;"><code id="debug-log-content"></code></pre>
+        </div>
       </div>
     </div>
     <script>
@@ -292,6 +296,47 @@
           toolResult: null,
           toolCancelled: null
         };
+
+        // Debug logging
+        const debugLogs = [];
+        const notificationCounts = {
+          'tool-input': 0,
+          'tool-input-partial': 0,
+          'tool-result': 0,
+          'tool-cancelled': 0,
+          'host-context-changed': 0
+        };
+
+        function getTimestamp() {
+          return new Date().toLocaleTimeString('en-US', { hour12: true });
+        }
+
+        function debugLog(emoji, message, data) {
+          const timestamp = getTimestamp();
+          let logEntry = timestamp + ': ' + emoji + ' ' + message;
+          if (data !== undefined) {
+            logEntry += '\n' + JSON.stringify(data, null, 2);
+          }
+          debugLogs.push(logEntry);
+          // Keep only last 50 entries
+          if (debugLogs.length > 50) {
+            debugLogs.shift();
+          }
+          renderDebugLog();
+        }
+
+        function renderDebugLog() {
+          const container = document.getElementById('debug-log-content');
+          if (container) {
+            container.textContent = debugLogs.join('\n\n');
+            // Auto-scroll to bottom
+            container.parentElement.scrollTop = container.parentElement.scrollHeight;
+          }
+          sendSizeChanged();
+        }
+
+        // Log initialization
+        debugLog('🚀', 'Initializing MCP App');
 
         function setTheme(theme) {
           document
@@ -425,6 +470,8 @@
 
           // Handle host-context-changed notification
           if (data.method === 'ui/notifications/host-context-changed') {
+            notificationCounts['host-context-changed']++;
+            debugLog('🎨', 'Received host-context-changed (#' + notificationCounts['host-context-changed'] + ')', data.params);
             if (data.params && data.params.theme) {
               setTheme(data.params.theme);
             }
@@ -433,30 +480,39 @@
 
           // Handle tool-input notification
           if (data.method === 'ui/notifications/tool-input') {
+            notificationCounts['tool-input']++;
+            debugLog('📥', 'Received tool-input (#' + notificationCounts['tool-input'] + ')', data.params);
             currentToolData.toolInput = data.params;
             renderToolData();
           }
 
           // Handle tool-result notification
           if (data.method === 'ui/notifications/tool-result') {
+            notificationCounts['tool-result']++;
+            debugLog('✅', 'Received tool-result (#' + notificationCounts['tool-result'] + ')', data.params);
             currentToolData.toolResult = data.params;
             renderToolData();
           }
 
           // Handle tool-input-partial notification
           if (data.method === 'ui/notifications/tool-input-partial') {
+            notificationCounts['tool-input-partial']++;
+            debugLog('📝', 'Received tool-input-partial (#' + notificationCounts['tool-input-partial'] + ')', data.params);
             currentToolData.toolInputPartial = data.params;
             renderToolData();
           }
 
           // Handle tool-cancelled notification
           if (data.method === 'ui/notifications/tool-cancelled') {
+            notificationCounts['tool-cancelled']++;
+            debugLog('❌', 'Received tool-cancelled (#' + notificationCounts['tool-cancelled'] + ')', data.params);
             currentToolData.toolCancelled = data.params;
             renderToolData();
           }
 
           // Handle resource-teardown request
           if (data.method === 'ui/resource-teardown') {
+            debugLog('🔚', 'Received resource-teardown', data.params);
             console.log('[MCP App Bench] ui/resource-teardown received:', data.params);
             // Send response back to host
             if ('id' in data) {
@@ -473,6 +529,7 @@
 
         async function initialize() {
           try {
+            debugLog('📡', 'Sending ui/initialize request');
             const result = await sendRequest('ui/initialize', {
               protocolVersion: '2025-06-18',
               capabilities: {},
@@ -482,6 +539,8 @@
               }
             });
 
+            debugLog('✨', 'Received ui/initialize response');
+
             // Apply initial theme
             if (result.hostContext && result.hostContext.theme) {
               setTheme(result.hostContext.theme);
@@ -490,8 +549,10 @@
             initializeHostInfo(result);
 
             // Send initialized notification
+            debugLog('📤', 'Sending ui/notifications/initialized');
             sendNotification('ui/notifications/initialized');
           } catch (error) {
+            debugLog('💥', 'Initialization error: ' + error.message);
             document
               .getElementById('host-info-content')
               .textContent = 'Error: ' + error.message;
