@@ -96,6 +96,7 @@ export function initMcpAppServer(): McpServer {
         timestamp: z.string().describe("The timestamp of the test").optional(),
       },
       _meta: {
+        "ui/resourceUri": MCP_APP_URI, // deprecated
         ui: {
           resourceUri: MCP_APP_URI,
         },
