@@ -317,6 +317,78 @@
       .json-viewer .jv-item {
         margin: 0.125em 0;
       }
+      /* Message Log */
+      .message-log {
+        max-height: 400px;
+        overflow-y: auto;
+        font-family: ui-monospace, monospace;
+        font-size: 0.75rem;
+      }
+      .message-row {
+        display: grid;
+        grid-template-columns: auto auto 1fr;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border);
+        align-items: start;
+      }
+      .message-row:last-child {
+        border-bottom: none;
+      }
+      .message-time {
+        color: var(--text-secondary);
+        white-space: nowrap;
+        font-size: 0.6875rem;
+      }
+      .message-direction {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+      }
+      .message-direction.sent {
+        background: rgba(134, 239, 172, 0.15);
+        color: #86efac;
+      }
+      .theme-light .message-direction.sent {
+        background: rgba(22, 163, 74, 0.1);
+        color: #16a34a;
+      }
+      .message-direction.received {
+        background: rgba(124, 172, 255, 0.15);
+        color: #7cacff;
+      }
+      .theme-light .message-direction.received {
+        background: rgba(92, 152, 249, 0.1);
+        color: #5c98f9;
+      }
+      .message-content {
+        min-width: 0;
+      }
+      .message-method {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+        word-break: break-all;
+      }
+      .message-body {
+        color: var(--text-secondary);
+        font-size: 0.6875rem;
+        line-height: 1.4;
+      }
+      .message-body .json-viewer {
+        font-size: 0.6875rem;
+      }
+      .message-empty {
+        color: var(--text-secondary);
+        font-style: italic;
+        padding: 1rem 0;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -379,8 +451,8 @@
           <div class="json-viewer" id="tool-data-content">Waiting...</div>
         </div>
         <div class="terminal-section">
-          <h2>🔍 Debug Log</h2>
-          <pre style="font-family: ui-monospace, monospace; font-size: 0.875rem; color: var(--text-secondary); white-space: pre-wrap; margin: 0;"><code id="debug-log-content"></code></pre>
+          <h2>📨 Message Log</h2>
+          <div class="message-log" id="message-log-content"></div>
         </div>
       </div>
     </div>
@@ -396,46 +468,64 @@
           toolCancelled: null
         };
 
-        // Debug logging
-        const debugLogs = [];
-        const notificationCounts = {
-          'tool-input': 0,
-          'tool-input-partial': 0,
-          'tool-result': 0,
-          'tool-cancelled': 0,
-          'host-context-changed': 0
-        };
+        // Message log
+        const messageLog = [];
+        const MAX_MESSAGES = 100;
 
         function getTimestamp() {
-          return new Date().toLocaleTimeString('en-US', { hour12: true });
+          return new Date().toLocaleTimeString('en-US', { 
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
         }
 
-        function debugLog(emoji, message, data) {
-          const timestamp = getTimestamp();
-          let logEntry = timestamp + ': ' + emoji + ' ' + message;
-          if (data !== undefined) {
-            logEntry += '\n' + JSON.stringify(data, null, 2);
+        function logMessage(direction, method, content) {
+          messageLog.push({
+            time: getTimestamp(),
+            direction: direction, // 'sent' or 'received'
+            method: method,
+            content: content
+          });
+          if (messageLog.length > MAX_MESSAGES) {
+            messageLog.shift();
           }
-          debugLogs.push(logEntry);
-          // Keep only last 50 entries
-          if (debugLogs.length > 50) {
-            debugLogs.shift();
-          }
-          renderDebugLog();
+          renderMessageLog();
         }
 
-        function renderDebugLog() {
-          const container = document.getElementById('debug-log-content');
-          if (container) {
-            container.textContent = debugLogs.join('\n\n');
-            // Auto-scroll to bottom
-            container.parentElement.scrollTop = container.parentElement.scrollHeight;
-          }
-          sendSizeChanged();
-        }
+        function renderMessageLog() {
+          const container = document.getElementById('message-log-content');
+          if (!container) return;
 
-        // Log initialization
-        debugLog('🚀', 'Initializing MCP App');
+          if (messageLog.length === 0) {
+            container.innerHTML = '<div class="message-empty">No messages yet</div>';
+            return;
+          }
+
+          let html = '';
+          // Render in reverse order (newest first)
+          for (let i = messageLog.length - 1; i >= 0; i--) {
+            const msg = messageLog[i];
+            const dirIcon = msg.direction === 'sent' ? '↑' : '↓';
+            const dirClass = msg.direction;
+            
+            html += '<div class="message-row">';
+            html += '<span class="message-time">' + msg.time + '</span>';
+            html += '<span class="message-direction ' + dirClass + '" title="' + (msg.direction === 'sent' ? 'Sent to host' : 'Received from host') + '">' + dirIcon + '</span>';
+            html += '<div class="message-content">';
+            html += '<div class="message-method">' + escapeHtml(msg.method) + '</div>';
+            if (msg.content !== undefined && msg.content !== null) {
+              html += '<div class="message-body">';
+              html += renderJsonValue(msg.content, 0, 2);
+              html += '</div>';
+            }
+            html += '</div>';
+            html += '</div>';
+          }
+
+          container.innerHTML = html;
+        }
 
         function setTheme(theme) {
           document.body.classList.remove('theme-light', 'theme-dark');
@@ -449,41 +539,36 @@
         function sendSizeChanged() {
           const width = document.body.scrollWidth;
           const height = document.body.scrollHeight;
-          window
-            .parent
-            .postMessage({
-              jsonrpc: '2.0',
-              method: 'ui/notifications/size-changed',
-              params: {
-                width,
-                height
-              }
-            }, '*');
+          const params = { width, height };
+          window.parent.postMessage({
+            jsonrpc: '2.0',
+            method: 'ui/notifications/size-changed',
+            params: params
+          }, '*');
+          // Don't log size-changed to avoid spam
         }
 
         function sendRequest(method, params) {
           return new Promise((resolve, reject) => {
             const id = requestId++;
-            pendingRequests.set(id, {resolve, reject});
-            window
-              .parent
-              .postMessage({
-                jsonrpc: '2.0',
-                id: id,
-                method: method,
-                params: params
-              }, '*');
+            pendingRequests.set(id, { resolve, reject, method, params });
+            logMessage('sent', method + ' (request)', params);
+            window.parent.postMessage({
+              jsonrpc: '2.0',
+              id: id,
+              method: method,
+              params: params
+            }, '*');
           });
         }
 
         function sendNotification(method, params) {
-          window
-            .parent
-            .postMessage({
-              jsonrpc: '2.0',
-              method: method,
-              params: params
-            }, '*');
+          logMessage('sent', method + ' (notification)', params);
+          window.parent.postMessage({
+            jsonrpc: '2.0',
+            method: method,
+            params: params
+          }, '*');
         }
 
         // Collapsible JSON Viewer
@@ -728,20 +813,25 @@
           
           // Handle response to our request
           if ('id' in data && pendingRequests.has(data.id)) {
-            const {resolve, reject} = pendingRequests.get(data.id);
+            const pending = pendingRequests.get(data.id);
             pendingRequests.delete(data.id);
             if (data.error) {
-              reject(data.error);
+              logMessage('received', pending.method + ' (error)', data.error);
+              pending.reject(data.error);
             } else {
-              resolve(data.result);
+              logMessage('received', pending.method + ' (response)', data.result);
+              pending.resolve(data.result);
             }
             return;
           }
 
+          // Handle notifications from host
+          if (data.method) {
+            logMessage('received', data.method, data.params);
+          }
+
           // Handle host-context-changed notification
           if (data.method === 'ui/notifications/host-context-changed') {
-            notificationCounts['host-context-changed']++;
-            debugLog('🎨', 'Received host-context-changed (#' + notificationCounts['host-context-changed'] + ')', data.params);
             if (data.params && data.params.theme) {
               setTheme(data.params.theme);
             }
@@ -750,56 +840,43 @@
 
           // Handle tool-input notification
           if (data.method === 'ui/notifications/tool-input') {
-            notificationCounts['tool-input']++;
-            debugLog('📥', 'Received tool-input (#' + notificationCounts['tool-input'] + ')', data.params);
             currentToolData.toolInput = data.params;
             renderToolData();
           }
 
           // Handle tool-result notification
           if (data.method === 'ui/notifications/tool-result') {
-            notificationCounts['tool-result']++;
-            debugLog('✅', 'Received tool-result (#' + notificationCounts['tool-result'] + ')', data.params);
             currentToolData.toolResult = data.params;
             renderToolData();
           }
 
           // Handle tool-input-partial notification
           if (data.method === 'ui/notifications/tool-input-partial') {
-            notificationCounts['tool-input-partial']++;
-            debugLog('📝', 'Received tool-input-partial (#' + notificationCounts['tool-input-partial'] + ')', data.params);
             currentToolData.toolInputPartial = data.params;
             renderToolData();
           }
 
           // Handle tool-cancelled notification
           if (data.method === 'ui/notifications/tool-cancelled') {
-            notificationCounts['tool-cancelled']++;
-            debugLog('❌', 'Received tool-cancelled (#' + notificationCounts['tool-cancelled'] + ')', data.params);
             currentToolData.toolCancelled = data.params;
             renderToolData();
           }
 
           // Handle resource-teardown request
           if (data.method === 'ui/resource-teardown') {
-            debugLog('🔚', 'Received resource-teardown', data.params);
-            console.log('[MCP App Bench] ui/resource-teardown received:', data.params);
             // Send response back to host
             if ('id' in data) {
-              window
-                .parent
-                .postMessage({
-                  jsonrpc: '2.0',
-                  id: data.id,
-                  result: {}
-                }, '*');
+              window.parent.postMessage({
+                jsonrpc: '2.0',
+                id: data.id,
+                result: {}
+              }, '*');
             }
           }
         }
 
         async function initialize() {
           try {
-            debugLog('📡', 'Sending ui/initialize request');
             const result = await sendRequest('ui/initialize', {
               protocolVersion: '2025-06-18',
               capabilities: {},
@@ -809,8 +886,6 @@
               }
             });
 
-            debugLog('✨', 'Received ui/initialize response');
-
             // Apply initial theme
             if (result.hostContext && result.hostContext.theme) {
               setTheme(result.hostContext.theme);
@@ -819,13 +894,9 @@
             initializeHostInfo(result);
 
             // Send initialized notification
-            debugLog('📤', 'Sending ui/notifications/initialized');
             sendNotification('ui/notifications/initialized');
           } catch (error) {
-            debugLog('💥', 'Initialization error: ' + error.message);
-            document
-              .getElementById('host-info-content')
-              .textContent = 'Error: ' + error.message;
+            document.getElementById('host-info-content').textContent = 'Error: ' + error.message;
           }
         }
 
