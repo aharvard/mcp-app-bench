@@ -4,10 +4,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" id="prism-dark"/>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" id="prism-light" disabled/>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
     <style>
       :root {
         --bg-primary: #18181b;
@@ -166,20 +162,6 @@
         letter-spacing: 0.05em;
         color: #71717a;
       }
-      .terminal-section pre[class*="language-"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        background: transparent !important;
-        font-size: 0.875rem !important;
-        line-height: 1.6 !important;
-        overflow: visible !important;
-      }
-      .terminal-section code[class*="language-"] {
-        font-family: ui-monospace, monospace !important;
-        font-size: 0.875rem !important;
-        white-space: pre-wrap !important;
-        word-break: break-word !important;
-      }
       /* Styles table */
       .styles-table {
         width: 100%;
@@ -259,49 +241,81 @@
         max-height: 400px;
         overflow-y: auto;
       }
-      /* Dark mode: custom terminal colors */
-      .theme-dark .terminal-section code[class*="language-"] {
-        color: #e4e4e7 !important;
+      /* Collapsible JSON viewer */
+      .json-viewer {
+        font-family: ui-monospace, monospace;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: var(--text-primary);
       }
-      .theme-dark .terminal-section .token.property {
-        color: #a78bfa !important;
+      .json-viewer .jv-toggle {
+        cursor: pointer;
+        user-select: none;
+        display: inline-block;
+        width: 1em;
+        text-align: center;
+        color: var(--text-secondary);
+        margin-right: 0.25em;
       }
-      .theme-dark .terminal-section .token.string {
-        color: #86efac !important;
+      .json-viewer .jv-toggle:hover {
+        color: var(--text-primary);
       }
-      .theme-dark .terminal-section .token.number {
-        color: #fcd34d !important;
+      .json-viewer .jv-collapsed > .jv-children {
+        display: none;
       }
-      .theme-dark .terminal-section .token.boolean {
-        color: #67e8f9 !important;
+      .json-viewer .jv-collapsed > .jv-toggle::before {
+        content: '▶';
       }
-      .theme-dark .terminal-section .token.null {
-        color: #f87171 !important;
+      .json-viewer .jv-expanded > .jv-toggle::before {
+        content: '▼';
       }
-      .theme-dark .terminal-section .token.punctuation {
-        color: #a1a1aa !important;
+      .json-viewer .jv-children {
+        padding-left: 1.25em;
+        border-left: 1px solid var(--border);
+        margin-left: 0.5em;
       }
-      /* Light mode: use Prism default light theme colors */
-      .theme-light .terminal-section code[class*="language-"] {
-        color: #383a42 !important;
+      .json-viewer .jv-key {
+        color: #a78bfa;
       }
-      .theme-light .terminal-section .token.property {
-        color: #7c3aed !important;
+      .theme-light .json-viewer .jv-key {
+        color: #7c3aed;
       }
-      .theme-light .terminal-section .token.string {
-        color: #16a34a !important;
+      .json-viewer .jv-string {
+        color: #86efac;
       }
-      .theme-light .terminal-section .token.number {
-        color: #ca8a04 !important;
+      .theme-light .json-viewer .jv-string {
+        color: #16a34a;
       }
-      .theme-light .terminal-section .token.boolean {
-        color: #0891b2 !important;
+      .json-viewer .jv-number {
+        color: #fcd34d;
       }
-      .theme-light .terminal-section .token.null {
-        color: #dc2626 !important;
+      .theme-light .json-viewer .jv-number {
+        color: #ca8a04;
       }
-      .theme-light .terminal-section .token.punctuation {
-        color: #71717a !important;
+      .json-viewer .jv-boolean {
+        color: #67e8f9;
+      }
+      .theme-light .json-viewer .jv-boolean {
+        color: #0891b2;
+      }
+      .json-viewer .jv-null {
+        color: #f87171;
+      }
+      .theme-light .json-viewer .jv-null {
+        color: #dc2626;
+      }
+      .json-viewer .jv-punctuation {
+        color: var(--text-secondary);
+      }
+      .json-viewer .jv-preview {
+        color: var(--text-secondary);
+        font-style: italic;
+      }
+      .json-viewer .jv-line {
+        white-space: nowrap;
+      }
+      .json-viewer .jv-item {
+        margin: 0.125em 0;
       }
     </style>
   </head>
@@ -352,7 +366,7 @@
       <div class="terminal-grid">
         <div class="terminal-section">
           <h2>Host Data</h2>
-          <pre class="language-json"><code class="language-json" id="host-info-content">Initializing...</code></pre>
+          <div class="json-viewer" id="host-info-content">Initializing...</div>
         </div>
         <div class="terminal-section">
           <h2>🎨 Host Styles</h2>
@@ -362,7 +376,7 @@
         </div>
         <div class="terminal-section">
           <h2>Tool Data</h2>
-          <pre class="language-json"><code class="language-json" id="tool-data-content">Waiting...</code></pre>
+          <div class="json-viewer" id="tool-data-content">Waiting...</div>
         </div>
         <div class="terminal-section">
           <h2>🔍 Debug Log</h2>
@@ -424,27 +438,11 @@
         debugLog('🚀', 'Initializing MCP App');
 
         function setTheme(theme) {
-          document
-            .body
-            .classList
-            .remove('theme-light', 'theme-dark');
-          const prismDark = document.getElementById('prism-dark');
-          const prismLight = document.getElementById('prism-light');
-
+          document.body.classList.remove('theme-light', 'theme-dark');
           if (theme === 'light') {
-            document
-              .body
-              .classList
-              .add('theme-light');
-            prismDark.disabled = true;
-            prismLight.disabled = false;
+            document.body.classList.add('theme-light');
           } else {
-            document
-              .body
-              .classList
-              .add('theme-dark');
-            prismDark.disabled = false;
-            prismLight.disabled = true;
+            document.body.classList.add('theme-dark');
           }
         }
 
@@ -488,24 +486,101 @@
             }, '*');
         }
 
-        function renderJson(elementId, data) {
-          const container = document.getElementById(elementId);
-          if (!container) 
-            return;
-          const json = JSON.stringify(data, null, 2);
-          container.textContent = json;
-          if (typeof Prism !== 'undefined') {
-            Prism.highlightElement(container);
+        // Collapsible JSON Viewer
+        function escapeHtml(str) {
+          return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+        }
+
+        function getPreview(value) {
+          if (Array.isArray(value)) {
+            return '[' + value.length + ' items]';
           }
+          if (typeof value === 'object' && value !== null) {
+            const keys = Object.keys(value);
+            return '{' + keys.length + ' keys}';
+          }
+          return '';
+        }
+
+        function renderJsonValue(value, depth, collapseDepth) {
+          if (value === null) {
+            return '<span class="jv-null">null</span>';
+          }
+          if (typeof value === 'boolean') {
+            return '<span class="jv-boolean">' + value + '</span>';
+          }
+          if (typeof value === 'number') {
+            return '<span class="jv-number">' + value + '</span>';
+          }
+          if (typeof value === 'string') {
+            return '<span class="jv-string">"' + escapeHtml(value) + '"</span>';
+          }
+          if (Array.isArray(value)) {
+            if (value.length === 0) {
+              return '<span class="jv-punctuation">[]</span>';
+            }
+            const collapsed = depth >= collapseDepth ? 'jv-collapsed' : 'jv-expanded';
+            let html = '<span class="jv-item ' + collapsed + '">';
+            html += '<span class="jv-toggle" onclick="this.parentElement.classList.toggle(\'jv-collapsed\');this.parentElement.classList.toggle(\'jv-expanded\');"></span>';
+            html += '<span class="jv-punctuation">[</span>';
+            html += '<span class="jv-preview">' + getPreview(value) + '</span>';
+            html += '<div class="jv-children">';
+            value.forEach(function(item, index) {
+              html += '<div class="jv-line">';
+              html += renderJsonValue(item, depth + 1, collapseDepth);
+              if (index < value.length - 1) html += '<span class="jv-punctuation">,</span>';
+              html += '</div>';
+            });
+            html += '</div>';
+            html += '<span class="jv-punctuation">]</span>';
+            html += '</span>';
+            return html;
+          }
+          if (typeof value === 'object') {
+            const keys = Object.keys(value);
+            if (keys.length === 0) {
+              return '<span class="jv-punctuation">{}</span>';
+            }
+            const collapsed = depth >= collapseDepth ? 'jv-collapsed' : 'jv-expanded';
+            let html = '<span class="jv-item ' + collapsed + '">';
+            html += '<span class="jv-toggle" onclick="this.parentElement.classList.toggle(\'jv-collapsed\');this.parentElement.classList.toggle(\'jv-expanded\');"></span>';
+            html += '<span class="jv-punctuation">{</span>';
+            html += '<span class="jv-preview">' + getPreview(value) + '</span>';
+            html += '<div class="jv-children">';
+            keys.forEach(function(key, index) {
+              html += '<div class="jv-line">';
+              html += '<span class="jv-key">"' + escapeHtml(key) + '"</span>';
+              html += '<span class="jv-punctuation">: </span>';
+              html += renderJsonValue(value[key], depth + 1, collapseDepth);
+              if (index < keys.length - 1) html += '<span class="jv-punctuation">,</span>';
+              html += '</div>';
+            });
+            html += '</div>';
+            html += '<span class="jv-punctuation">}</span>';
+            html += '</span>';
+            return html;
+          }
+          return String(value);
+        }
+
+        function renderCollapsibleJson(elementId, data, collapseDepth) {
+          const container = document.getElementById(elementId);
+          if (!container) return;
+          collapseDepth = collapseDepth !== undefined ? collapseDepth : 3;
+          container.innerHTML = renderJsonValue(data, 0, collapseDepth);
         }
 
         function renderHostInfo() {
-          renderJson('host-info-content', currentHostInfo);
+          renderCollapsibleJson('host-info-content', currentHostInfo, 3);
           sendSizeChanged();
         }
 
         function renderToolData() {
-          renderJson('tool-data-content', currentToolData);
+          renderCollapsibleJson('tool-data-content', currentToolData, 3);
           sendSizeChanged();
         }
 

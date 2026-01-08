@@ -72,7 +72,6 @@ export function initMcpAppServer(): McpServer {
                   BASE_URL,
                   "https://fonts.googleapis.com",
                   "https://fonts.gstatic.com",
-                  "https://cdnjs.cloudflare.com",
                 ],
               },
             },
