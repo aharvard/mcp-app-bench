@@ -180,6 +180,85 @@
         white-space: pre-wrap !important;
         word-break: break-word !important;
       }
+      /* Styles table */
+      .styles-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: ui-monospace, monospace;
+        font-size: 0.75rem;
+      }
+      .styles-table th {
+        text-align: left;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.625rem;
+      }
+      .styles-table td {
+        padding: 0.375rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+      }
+      .styles-table tr:last-child td {
+        border-bottom: none;
+      }
+      .styles-table .var-name {
+        color: #a78bfa;
+        word-break: break-all;
+      }
+      .theme-light .styles-table .var-name {
+        color: #7c3aed;
+      }
+      .styles-table .var-value {
+        color: #86efac;
+        word-break: break-all;
+        max-width: 200px;
+      }
+      .theme-light .styles-table .var-value {
+        color: #16a34a;
+      }
+      .color-swatch {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .color-swatch-box {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        flex-shrink: 0;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+      }
+      .styles-category {
+        margin-bottom: 1.5rem;
+      }
+      .styles-category:last-child {
+        margin-bottom: 0;
+      }
+      .styles-category-title {
+        font-family: ui-monospace, monospace;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        margin: 0 0 0.5rem;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .styles-empty {
+        color: var(--text-secondary);
+        font-style: italic;
+        padding: 1rem 0;
+      }
+      .styles-scroll {
+        max-height: 400px;
+        overflow-y: auto;
+      }
       /* Dark mode: custom terminal colors */
       .theme-dark .terminal-section code[class*="language-"] {
         color: #e4e4e7 !important;
@@ -274,6 +353,12 @@
         <div class="terminal-section">
           <h2>Host Data</h2>
           <pre class="language-json"><code class="language-json" id="host-info-content">Initializing...</code></pre>
+        </div>
+        <div class="terminal-section">
+          <h2>🎨 Host Styles</h2>
+          <div class="styles-scroll" id="host-styles-content">
+            <div class="styles-empty">Waiting for host styles...</div>
+          </div>
         </div>
         <div class="terminal-section">
           <h2>Tool Data</h2>
@@ -424,6 +509,111 @@
           sendSizeChanged();
         }
 
+        function isColorValue(value) {
+          if (!value || typeof value !== 'string') return false;
+          // Check for common color patterns
+          return /^#[0-9a-fA-F]{3,8}$/.test(value) ||
+                 /^rgb\(/.test(value) ||
+                 /^rgba\(/.test(value) ||
+                 /^hsl\(/.test(value) ||
+                 /^hsla\(/.test(value) ||
+                 /^light-dark\(/.test(value);
+        }
+
+        function categorizeStyleVariables(variables) {
+          const categories = {
+            'Background Colors': [],
+            'Text Colors': [],
+            'Border Colors': [],
+            'Ring Colors': [],
+            'Typography': [],
+            'Border Radius': [],
+            'Shadows': [],
+            'Other': []
+          };
+
+          for (const [key, value] of Object.entries(variables)) {
+            if (key.startsWith('--color-background-')) {
+              categories['Background Colors'].push([key, value]);
+            } else if (key.startsWith('--color-text-')) {
+              categories['Text Colors'].push([key, value]);
+            } else if (key.startsWith('--color-border-')) {
+              categories['Border Colors'].push([key, value]);
+            } else if (key.startsWith('--color-ring-')) {
+              categories['Ring Colors'].push([key, value]);
+            } else if (key.startsWith('--font-') || key.startsWith('--font-weight-')) {
+              categories['Typography'].push([key, value]);
+            } else if (key.startsWith('--border-radius-') || key.startsWith('--border-width-')) {
+              categories['Border Radius'].push([key, value]);
+            } else if (key.startsWith('--shadow-')) {
+              categories['Shadows'].push([key, value]);
+            } else {
+              categories['Other'].push([key, value]);
+            }
+          }
+
+          return categories;
+        }
+
+        function renderHostStyles(styles) {
+          const container = document.getElementById('host-styles-content');
+          if (!container) return;
+
+          if (!styles || !styles.variables || Object.keys(styles.variables).length === 0) {
+            container.innerHTML = '<div class="styles-empty">No styles provided by host</div>';
+            sendSizeChanged();
+            return;
+          }
+
+          const categories = categorizeStyleVariables(styles.variables);
+          let html = '';
+
+          for (const [category, vars] of Object.entries(categories)) {
+            if (vars.length === 0) continue;
+
+            html += '<div class="styles-category">';
+            html += '<h3 class="styles-category-title">' + category + '</h3>';
+            html += '<table class="styles-table"><tbody>';
+
+            for (const [varName, value] of vars) {
+              const displayName = varName.replace(/^--/, '');
+              const isColor = isColorValue(value);
+              
+              html += '<tr>';
+              html += '<td class="var-name">' + displayName + '</td>';
+              html += '<td class="var-value">';
+              
+              if (isColor) {
+                html += '<span class="color-swatch">';
+                html += '<span class="color-swatch-box" style="background: ' + value + ';"></span>';
+                html += '<span>' + value + '</span>';
+                html += '</span>';
+              } else {
+                html += value;
+              }
+              
+              html += '</td>';
+              html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+            html += '</div>';
+          }
+
+          // Show fonts CSS if available
+          if (styles.css && styles.css.fonts) {
+            html += '<div class="styles-category">';
+            html += '<h3 class="styles-category-title">Custom Fonts CSS</h3>';
+            html += '<pre style="font-family: ui-monospace, monospace; font-size: 0.7rem; color: var(--text-secondary); white-space: pre-wrap; margin: 0; max-height: 150px; overflow-y: auto;">';
+            html += styles.css.fonts.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            html += '</pre>';
+            html += '</div>';
+          }
+
+          container.innerHTML = html;
+          sendSizeChanged();
+        }
+
         function initializeHostInfo(result) {
           // Update subtitle with host info
           const subtitle = document.getElementById('host-info-subtitle');
@@ -442,6 +632,11 @@
             hostContext: result.hostContext || {}
           };
           renderHostInfo();
+
+          // Render host styles separately for visual display
+          if (result.hostContext && result.hostContext.styles) {
+            renderHostStyles(result.hostContext.styles);
+          }
         }
 
         function updateHostContext(params) {
