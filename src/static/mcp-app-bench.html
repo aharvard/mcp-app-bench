@@ -1823,6 +1823,30 @@
           return html;
         }
 
+        // Inject style variables as CSS custom properties on the document
+        function injectStyleVariables(variables) {
+          if (!variables) return;
+          
+          // Remove any previously injected style element
+          const existingStyle = document.getElementById('host-style-variables');
+          if (existingStyle) {
+            existingStyle.remove();
+          }
+          
+          // Build CSS with all variables on :root
+          let css = ':root {\n';
+          for (const [varName, value] of Object.entries(variables)) {
+            css += '  ' + varName + ': ' + value + ';\n';
+          }
+          css += '}\n';
+          
+          // Create and inject style element
+          const styleEl = document.createElement('style');
+          styleEl.id = 'host-style-variables';
+          styleEl.textContent = css;
+          document.head.appendChild(styleEl);
+        }
+
         function renderHostStyles(styles) {
           const container = document.getElementById('host-styles-content');
           if (!container) 
@@ -1833,6 +1857,9 @@
             sendSizeChanged();
             return;
           }
+          
+          // Inject variables as CSS custom properties so var() references work
+          injectStyleVariables(styles.variables);
 
           const categories = categorizeStyleVariables(styles.variables);
           const allVars = styles.variables;
