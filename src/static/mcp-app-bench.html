@@ -272,7 +272,6 @@
       }
       .type-scale-preview {
         color: var(--text-primary);
-        line-height: 1;
       }
       .type-scale-meta {
         display: grid;
@@ -1766,12 +1765,12 @@
 
         // Render type scale preview (headings or text sizes)
         function renderTypeScale(vars, allVars, isHeading) {
-          // Group by size (e.g., xs, sm, md, lg)
+          // Group by size (e.g., xs, sm, md, lg, xl, 2xl, 3xl)
           const sizeGroups = {};
           
           for (const [varName, value] of vars) {
-            // Extract size key (e.g., "xs", "sm", "md", "lg", "xl", "2xl", "3xl")
-            const match = varName.match(isHeading ? /--font-heading-(\w+)-(size|line-height)/ : /--font-text-(\w+)-(size|line-height)/);
+            // Extract size key - use [a-z0-9]+ to match sizes like "2xl", "3xl"
+            const match = varName.match(isHeading ? /--font-heading-([a-z0-9]+)-(size|line-height)/ : /--font-text-([a-z0-9]+)-(size|line-height)/);
             if (match) {
               const sizeKey = match[1];
               const propType = match[2];
@@ -1799,8 +1798,11 @@
             const fontSize = group.size.value;
             const lineHeight = group['line-height'] ? group['line-height'].value : '1.2';
             
+            // Build inline style with proper escaping for font-family
+            const previewStyle = 'font-family: ' + fontFamily + '; font-size: ' + fontSize + '; line-height: ' + lineHeight + '; font-weight: ' + (isHeading ? '700' : '400') + ';';
+            
             html += '<div class="type-scale-item">';
-            html += '<div class="type-scale-preview" style="font-family: ' + fontFamily + '; font-size: ' + fontSize + '; line-height: ' + lineHeight + '; font-weight: ' + (isHeading ? '700' : '400') + ';">Lorem ipsum</div>';
+            html += '<div class="type-scale-preview" style="' + previewStyle + '">Lorem ipsum</div>';
             html += '<div class="type-scale-meta">';
             
             // Size row
