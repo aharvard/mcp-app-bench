@@ -29,61 +29,85 @@
   // HostContext Schema (for validation)
   // ==========================================================================
 
+  // HostContext Schema based on MCP Apps spec
+  // Note: All top-level properties are optional (?)
+  // containerDimensions uses union types for height/maxHeight and width/maxWidth
   const hostContextSchema = {
     hostContext: {
       type: "object",
       children: {
         toolInfo: {
           type: "object",
+          optional: true,
           children: {
-            id: { type: ["string", "number"] },
+            id: { type: ["string", "number"], optional: true },
             tool: {
               type: "object",
               children: {
                 name: { type: "string" },
-                description: { type: "string" },
-                inputSchema: { type: "object" },
+                description: { type: "string", optional: true },
+                inputSchema: { type: "object", optional: true },
               },
             },
           },
         },
-        theme: { type: "string", enum: ["light", "dark"] },
+        theme: { type: "string", enum: ["light", "dark"], optional: true },
         styles: {
           type: "object",
+          optional: true,
           children: {
-            variables: { type: "object" },
+            variables: { type: "object", optional: true },
             css: {
               type: "object",
+              optional: true,
               children: {
-                fonts: { type: "string" },
+                fonts: { type: "string", optional: true },
               },
             },
           },
         },
-        displayMode: { type: "string", enum: ["inline", "fullscreen", "pip"] },
-        availableDisplayModes: { type: "array" },
+        displayMode: {
+          type: "string",
+          enum: ["inline", "fullscreen", "pip"],
+          optional: true,
+        },
+        availableDisplayModes: { type: "array", optional: true },
+        // containerDimensions is a union type:
+        // (height | maxHeight) & (width | maxWidth)
+        // We mark all as optional and validate the union logic separately
         containerDimensions: {
           type: "object",
+          optional: true,
+          unionGroups: [
+            { oneOf: ["height", "maxHeight"], label: "height or maxHeight" },
+            { oneOf: ["width", "maxWidth"], label: "width or maxWidth" },
+          ],
           children: {
-            height: { type: "number" },
-            maxHeight: { type: "number" },
-            width: { type: "number" },
-            maxWidth: { type: "number" },
+            height: { type: "number", optional: true },
+            maxHeight: { type: "number", optional: true },
+            width: { type: "number", optional: true },
+            maxWidth: { type: "number", optional: true },
           },
         },
-        locale: { type: "string" },
-        timeZone: { type: "string" },
-        userAgent: { type: "string" },
-        platform: { type: "string", enum: ["web", "desktop", "mobile"] },
+        locale: { type: "string", optional: true },
+        timeZone: { type: "string", optional: true },
+        userAgent: { type: "string", optional: true },
+        platform: {
+          type: "string",
+          enum: ["web", "desktop", "mobile"],
+          optional: true,
+        },
         deviceCapabilities: {
           type: "object",
+          optional: true,
           children: {
-            touch: { type: "boolean" },
-            hover: { type: "boolean" },
+            touch: { type: "boolean", optional: true },
+            hover: { type: "boolean", optional: true },
           },
         },
         safeAreaInsets: {
           type: "object",
+          optional: true,
           children: {
             top: { type: "number" },
             right: { type: "number" },
@@ -576,11 +600,13 @@
 
   /**
    * Generate test cases from the hostContextSchema
-   * Returns an array of { path, expectedType, enumValues?, hasChildren }
+   * Returns an array of { path, expectedType, enumValues?, hasChildren, optional, unionGroups? }
    */
-  function generateTestCases(schema, prefix) {
+  function generateTestCases(schema, prefix, parentExists) {
     const tests = []
     prefix = prefix || ""
+    // Default to true for root level
+    if (parentExists === undefined) parentExists = true
 
     for (const key in schema) {
       const fullPath = prefix ? prefix + "." + key : key
@@ -591,10 +617,12 @@
         expectedType: entry.type,
         enumValues: entry.enum || null,
         hasChildren: !!entry.children,
+        optional: !!entry.optional,
+        unionGroups: entry.unionGroups || null,
       })
 
       if (entry.children) {
-        const childTests = generateTestCases(entry.children, fullPath)
+        const childTests = generateTestCases(entry.children, fullPath, true)
         tests.push.apply(tests, childTests)
       }
     }
@@ -621,16 +649,46 @@
   }
 
   /**
+   * Check if parent path exists in the host data
+   */
+  function parentPathExists(hostData, path) {
+    const parts = path.split(".")
+    if (parts.length <= 1) return true
+    const parentPath = parts.slice(0, -1).join(".")
+    return getValueByPath(hostData, parentPath).found
+  }
+
+  /**
    * Run a single test case against the host data
-   * Returns { status: 'pass'|'fail'|'warn', message, actualValue, actualType }
+   * Returns { status: 'pass'|'fail'|'warn'|'skip', message, actualValue, actualType }
    */
   function runTestCase(testCase, hostData) {
     const result = getValueByPath(hostData, testCase.path)
 
+    // If property not found
     if (!result.found) {
+      // If optional, it's a skip (not a failure)
+      if (testCase.optional) {
+        return {
+          status: "skip",
+          message: "Optional, not provided",
+          actualValue: undefined,
+          actualType: "undefined",
+        }
+      }
+      // If parent doesn't exist and this is a nested required property, skip
+      // (the parent's test will show the failure)
+      if (!parentPathExists(hostData, testCase.path)) {
+        return {
+          status: "skip",
+          message: "Parent not provided",
+          actualValue: undefined,
+          actualType: "undefined",
+        }
+      }
       return {
         status: "fail",
-        message: "Property not provided",
+        message: "Required property not provided",
         actualValue: undefined,
         actualType: "undefined",
       }

@@ -1312,6 +1312,11 @@ h1 {
   color: var(--text-secondary);
 }
 
+.test-item-icon.is-skip {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
 .test-item-path {
   color: var(--text-primary);
   word-break: break-all;
@@ -1357,6 +1362,12 @@ h1 {
 
 .theme-light .test-item-message.is-warn {
   color: #d97706;
+}
+
+.test-item-message.is-skip {
+  color: var(--text-secondary);
+  opacity: 0.6;
+  font-style: italic;
 }
 
 /* Unexpected Properties Section */

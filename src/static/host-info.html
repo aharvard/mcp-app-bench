@@ -89,6 +89,7 @@
             case 'pass': return '✓';
             case 'fail': return '✗';
             case 'warn': return '⚠';
+            case 'skip': return '–';
             case 'pending': return '○';
             default: return '○';
           }
@@ -118,8 +119,10 @@
           const passCount = testResults.filter(function(r) { return r && r.status === 'pass'; }).length;
           const failCount = testResults.filter(function(r) { return r && r.status === 'fail'; }).length;
           const warnCount = testResults.filter(function(r) { return r && r.status === 'warn'; }).length;
+          const skipCount = testResults.filter(function(r) { return r && r.status === 'skip'; }).length;
           const totalTests = testCases.length;
           const completedTests = testResults.filter(function(r) { return r !== null; }).length;
+          const relevantTests = totalTests - skipCount;
 
           // Determine overall status
           let overallStatus = 'running';
@@ -133,11 +136,14 @@
               statusIcon = '✗';
             } else if (warnCount > 0) {
               overallStatus = 'warn';
-              statusText = 'All tests passed with ' + warnCount + ' warning' + (warnCount === 1 ? '' : 's');
+              statusText = passCount + ' passed with ' + warnCount + ' warning' + (warnCount === 1 ? '' : 's');
               statusIcon = '⚠';
             } else {
               overallStatus = 'pass';
-              statusText = 'All ' + totalTests + ' tests passed';
+              statusText = passCount + ' tests passed';
+              if (skipCount > 0) {
+                statusText += ' (' + skipCount + ' skipped)';
+              }
               statusIcon = '✓';
             }
           }
@@ -219,6 +225,8 @@
                   html += '<span class="test-item-message">' + MCPAppShell.escapeHtml(result.message) + '</span>';
                 } else if (result.status === 'warn') {
                   html += '<span class="test-item-message is-warn">' + MCPAppShell.escapeHtml(result.message) + '</span>';
+                } else if (result.status === 'skip') {
+                  html += '<span class="test-item-message is-skip">' + MCPAppShell.escapeHtml(result.message) + '</span>';
                 }
               }
               
