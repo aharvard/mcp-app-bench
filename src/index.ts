@@ -37,8 +37,6 @@ app.use("/assets", express.static(assetsDir, { maxAge: "1h" }))
 
 // Serve shell assets (CSS, JS) from the static/shell directory
 const shellDir = path.join(__dirname, "static", "shell")
-console.log("Shell directory:", shellDir)
-console.log("Shell directory exists:", require("fs").existsSync(shellDir))
 app.use("/shell", express.static(shellDir, { maxAge: "1h" }))
 
 // =============================================================================
