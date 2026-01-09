@@ -36,8 +36,9 @@ const assetsDir = path.join(__dirname, "..", "assets")
 app.use("/assets", express.static(assetsDir, { maxAge: "1h" }))
 
 // Serve shell assets (CSS, JS) from the static/shell directory
+// No maxAge - cache busting is handled via query string hash
 const shellDir = path.join(__dirname, "static", "shell")
-app.use("/shell", express.static(shellDir, { maxAge: "1h" }))
+app.use("/shell", express.static(shellDir))
 
 // =============================================================================
 // Transport Maps - Separate maps for each endpoint

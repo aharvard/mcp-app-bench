@@ -1,6 +1,11 @@
+import { randomBytes } from "crypto"
+
 export const PORT = process.env.PORT || 6789
 export const BASE_URL =
   process.env.BASE_URL || (`http://localhost:${PORT}` as const)
+
+// Cache-busting hash generated on server start
+export const CACHE_HASH = randomBytes(8).toString("hex")
 
 export const MCP_APPS_EXTENSION_ID = "io.modelcontextprotocol/ui" as const
 export const MCP_APPS_MIME_TYPE = "text/html;profile=mcp-app" as const
