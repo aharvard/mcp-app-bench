@@ -25,6 +25,7 @@
             <div id="tool-data-content">Waiting for tool events...</div>
           </div>
         </div>
+        <div id="inspector-footer" class="inspector-footer"></div>
       </div>
     </div>
 
@@ -82,6 +83,7 @@
         // Listen for tool result to render content
         window.addEventListener('mcp-tool-result', function () {
           renderToolData();
+          MCPAppShell.setupInspectorFooter('inspect-tool-data');
         });
 
         // Listen for other tool events

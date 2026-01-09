@@ -25,6 +25,7 @@
             <div id="host-info-content">Initializing...</div>
           </div>
         </div>
+        <div id="inspector-footer" class="inspector-footer"></div>
       </div>
     </div>
 
@@ -187,6 +188,7 @@
         // Listen for tool result to render content
         window.addEventListener('mcp-tool-result', function () {
           renderHostInfo();
+          MCPAppShell.setupInspectorFooter('inspect-host-info');
         });
 
         // Listen for host context changes

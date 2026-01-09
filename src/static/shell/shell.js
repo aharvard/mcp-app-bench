@@ -824,6 +824,69 @@
   resizeObserver.observe(document.body)
 
   // ==========================================================================
+  // Inspector Navigation
+  // ==========================================================================
+
+  const inspectors = [
+    { id: "inspect-host-info", icon: "🖥️", label: "Host Info" },
+    { id: "inspect-host-styles", icon: "🎨", label: "Styles" },
+    { id: "inspect-messaging", icon: "💬", label: "Messaging" },
+    { id: "inspect-tool-data", icon: "🔧", label: "Tool Data" },
+  ]
+
+  function navigateToInspector(toolName) {
+    sendRequest("ui/message", {
+      role: "user",
+      content: {
+        type: "text",
+        text: "Run the " + toolName + " tool.",
+      },
+    })
+      .then(function (result) {
+        console.log("[Shell] Navigation message sent:", toolName)
+      })
+      .catch(function (error) {
+        console.error("[Shell] Navigation error:", error)
+      })
+  }
+
+  function setupInspectorFooter(currentInspectorId) {
+    const footer = document.getElementById("inspector-footer")
+    if (!footer) return
+
+    footer.innerHTML = inspectors
+      .map(function (inspector) {
+        const isCurrent = inspector.id === currentInspectorId
+        return (
+          '<button class="inspector-footer-btn' +
+          (isCurrent ? " is-current" : "") +
+          '" data-tool="' +
+          inspector.id +
+          '"' +
+          (isCurrent ? " disabled" : "") +
+          ">" +
+          '<span class="inspector-footer-btn-icon">' +
+          inspector.icon +
+          "</span>" +
+          inspector.label +
+          "</button>"
+        )
+      })
+      .join("")
+
+    footer.querySelectorAll(".inspector-footer-btn").forEach(function (btn) {
+      if (!btn.disabled) {
+        btn.addEventListener("click", function () {
+          const toolName = btn.getAttribute("data-tool")
+          if (toolName) {
+            navigateToInspector(toolName)
+          }
+        })
+      }
+    })
+  }
+
+  // ==========================================================================
   // Loading State Management
   // ==========================================================================
 
@@ -897,6 +960,10 @@
     injectStyleVariables: injectStyleVariables,
     categorizeStyleVariables: categorizeStyleVariables,
     parseLightDark: parseLightDark,
+
+    // Navigation
+    setupInspectorFooter: setupInspectorFooter,
+    navigateToInspector: navigateToInspector,
 
     // Initialization
     initialize: initialize,

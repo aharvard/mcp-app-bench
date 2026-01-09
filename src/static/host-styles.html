@@ -27,6 +27,7 @@
             </div>
           </div>
         </div>
+        <div id="inspector-footer" class="inspector-footer"></div>
       </div>
     </div>
 
@@ -264,6 +265,7 @@
         // Listen for tool result to render content
         window.addEventListener('mcp-tool-result', function () {
           renderHostStyles();
+          MCPAppShell.setupInspectorFooter('inspect-host-styles');
         });
 
         // Listen for host context changes
