@@ -56,40 +56,45 @@
         font-size: 0.875rem;
         color: var(--text-secondary);
       }
-      .actions {
-        margin-top: 1rem;
-        margin-bottom: 2rem;
-        text-align: center;
+      .messaging-layout {
+        display: grid;
+        grid-template-columns: auto 1fr;
       }
-      .actions-heading {
-        margin: 0 0 0.75rem;
-        letter-spacing: 0.05em;
-        color: var(--text-primary);
+      .messaging-buttons {
+        padding: 1rem;
+        border-right: 1px solid var(--border);
       }
-      .actions-note {
+      .messaging-buttons-group {
+        margin-bottom: 1.5rem;
+      }
+      .messaging-buttons-group:last-child {
+        margin-bottom: 0;
+      }
+      .messaging-buttons-heading {
+        font-family: ui-monospace, monospace;
+        font-size: 0.75rem;
         color: var(--text-secondary);
-        font-size: 1.2rem;
+        margin: 0 0 0.75rem;
       }
-      .actions-buttons {
+      .messaging-buttons-list {
         display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
+        flex-direction: column;
         gap: 0.5rem;
       }
       .action-btn {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.625rem 1.25rem;
+        padding: 0.5rem 0.75rem;
         background: var(--text-primary);
         border: 1px solid var(--border);
         border-radius: 6px;
         color: var(--bg-primary);
         font-family: ui-monospace, monospace;
-        font-size: 1rem;
+        font-size: 0.8125rem;
         cursor: pointer;
         transition: all 0.15s ease;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        text-align: left;
       }
       .action-btn:hover {
         background: var(--bg-primary);
@@ -100,15 +105,6 @@
       .action-btn:active {
         transform: translateY(0);
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-      }
-      .action-btn code {
-        color: var(--bg-primary);
-        opacity: 0.7;
-        font-size: 0.75rem;
-      }
-      .action-btn:hover code {
-        color: var(--text-primary);
-        opacity: 0.7;
       }
       .action-btn:disabled {
         opacity: 0.25;
@@ -126,6 +122,17 @@
       .theme-light .action-btn:hover {
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
       }
+      .messaging-log-container {
+        background: var(--bg-terminal);
+        min-height: 300px;
+      }
+      .messaging-log-header {
+        font-family: ui-monospace, monospace;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        padding: 1rem 1rem 0.5rem;
+        margin: 0;
+      }
       .terminal {
         margin: 1.5rem -24px 0;
         background: var(--bg-terminal);
@@ -137,21 +144,14 @@
         box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
       }
       .terminal-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        align-items: stretch;
+        display: flex;
+        flex-direction: column;
       }
       .terminal-grid > .terminal-section {
         padding: 1.5rem 24px;
       }
       .terminal-grid > .terminal-section:not(:last-child) {
-        border-right: 1px solid var(--border);
-      }
-      @media (max-width: 700px) {
-        .terminal-grid > .terminal-section:not(:last-child) {
-          border-right: none;
-          border-bottom: 1px solid var(--border);
-        }
+        border-bottom: 1px solid var(--border);
       }
       .terminal-section h2 {
         margin: 0 0 0.75rem;
@@ -394,65 +394,50 @@
   <body>
     <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
     <h1>MCP App Bench</h1>
-    <div class="actions">
-      <h2 class="actions-heading">Host Requests</h2>
-      <div class="actions-buttons">
-        <button class="action-btn" id="btn-open-link">
-        Open Link <code>ui/open-link</code>
-        </button>
-        <button class="action-btn" id="btn-message">
-        Send Message <code>ui/message</code>
-        </button>
-        <button class="action-btn" id="btn-size-change">
-        Size Change <code>ui/notifications/size-changed</code>
-        </button>
-      </div>
-    </div>
-    <div class="actions">
-      <h2 class="actions-heading">Server Requests</h2>
-      <div class="actions-buttons">
-        <button class="action-btn" id="btn-tools-call">
-        Call Tool <code>tools/call</code>
-        </button>
-        <button class="action-btn" id="btn-resources-list">
-        List Resources <code>resources/list</code>
-        </button>
-        <button class="action-btn" id="btn-resources-templates-list">
-        List Templates <code>resources/templates/list</code>
-        </button>
-        <button class="action-btn" id="btn-resources-read">
-        Read Resource <code>resources/read</code>
-        </button>
-        <button class="action-btn" id="btn-prompts-list">
-        List Prompts <code>prompts/list</code>
-        </button>
-        <button class="action-btn" id="btn-notifications-message">
-        Log Message <code>notifications/message</code>
-        </button>
-        <button class="action-btn" id="btn-ping">
-        Ping <code>ping</code>
-        </button>
-      </div>
-    </div>
     <div class="terminal">
       <div class="terminal-grid">
-        <div class="terminal-section">
-          <h2>Host Data</h2>
-          <div class="json-viewer" id="host-info-content">Initializing...</div>
-        </div>
-        <div class="terminal-section">
-          <h2>🎨 Host Styles</h2>
-          <div class="styles-scroll" id="host-styles-content">
-            <div class="styles-empty">Waiting for host styles...</div>
-          </div>
-        </div>
         <div class="terminal-section">
           <h2>Tool Data</h2>
           <div class="json-viewer" id="tool-data-content">Waiting...</div>
         </div>
         <div class="terminal-section">
-          <h2>📨 Message Log</h2>
-          <div class="message-log" id="message-log-content"></div>
+          <h2>Host Data</h2>
+          <div class="json-viewer" id="host-info-content">Initializing...</div>
+        </div>
+        <div class="terminal-section">
+          <h2>Host Styles</h2>
+          <div class="styles-scroll" id="host-styles-content">
+            <div class="styles-empty">Waiting for host styles...</div>
+          </div>
+        </div>
+        <div class="terminal-section">
+          <h2>Messaging</h2>
+          <div class="messaging-layout">
+            <div class="messaging-buttons">
+              <div class="messaging-buttons-group">
+                <h3 class="messaging-buttons-heading">UI → Host</h3>
+                <div class="messaging-buttons-list">
+                  <button class="action-btn" id="btn-open-link">ui/open-link</button>
+                  <button class="action-btn" id="btn-message">ui/message</button>
+                  <button class="action-btn" id="btn-size-change">ui/notifications/size-changed</button>
+                  <button class="action-btn" id="btn-get-context">ui/get-context</button>
+                </div>
+              </div>
+              <div class="messaging-buttons-group">
+                <h3 class="messaging-buttons-heading">UI → Server</h3>
+                <div class="messaging-buttons-list">
+                  <button class="action-btn" id="btn-tools-call">tools/call</button>
+                  <button class="action-btn" id="btn-resources-read">resources/read</button>
+                  <button class="action-btn" id="btn-notifications-message">notifications/message</button>
+                  <button class="action-btn" id="btn-ping">ping</button>
+                </div>
+              </div>
+            </div>
+            <div class="messaging-log-container">
+              <h3 class="messaging-log-header">message log</h3>
+              <div class="message-log" id="message-log-content"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -774,6 +759,20 @@
           sendSizeChanged();
         }
 
+        function renderResourceMeta(resourceMeta) {
+          const container = document.getElementById('resource-meta-content');
+          if (!container) return;
+
+          if (!resourceMeta || Object.keys(resourceMeta).length === 0) {
+            container.innerHTML = '<div class="styles-empty">No resource metadata provided by host</div>';
+            sendSizeChanged();
+            return;
+          }
+
+          renderCollapsibleJson('resource-meta-content', resourceMeta, 2);
+          sendSizeChanged();
+        }
+
         function initializeHostInfo(result) {
           // Update subtitle with host info
           const subtitle = document.getElementById('host-info-subtitle');
@@ -792,6 +791,11 @@
             hostContext: result.hostContext || {}
           };
           renderHostInfo();
+
+          // Render resource metadata (from _meta on the resource)
+          if (result.hostContext && result.hostContext.resourceMeta) {
+            renderResourceMeta(result.hostContext.resourceMeta);
+          }
 
           // Render host styles separately for visual display
           if (result.hostContext && result.hostContext.styles) {
@@ -877,14 +881,27 @@
 
         async function initialize() {
           try {
-            const result = await sendRequest('ui/initialize', {
+            const initParams = {
               protocolVersion: '2025-06-18',
               capabilities: {},
               clientInfo: {
                 name: 'MCP App Bench',
                 version: '1.0.0'
               }
-            });
+            };
+            // MCP Jam compatibility: also send as appInfo/appCapabilities for hosts expecting that naming
+            initParams.appInfo = initParams.clientInfo;
+            initParams.appCapabilities = initParams.capabilities;
+            
+            const result = await sendRequest('ui/initialize', initParams);
+            
+            // MCP Jam compatibility: handle edge case where host uses appInfo/appCapabilities naming in response
+            if (result.appInfo && !result.hostInfo) {
+              result.hostInfo = result.appInfo;
+            }
+            if (result.appCapabilities && !result.hostCapabilities) {
+              result.hostCapabilities = result.appCapabilities;
+            }
 
             // Apply initial theme
             if (result.hostContext && result.hostContext.theme) {
@@ -942,6 +959,19 @@
             console.log('[MCP App Bench] ui/notifications/size-changed sent (no response expected)');
           });
 
+        // Action button: Get Context
+        document
+          .getElementById('btn-get-context')
+          .addEventListener('click', function () {
+            sendRequest('ui/get-context', {})
+              .then(function (result) {
+                console.log('[MCP App Bench] ui/get-context response:', result);
+              })
+              .catch(function (error) {
+                console.error('[MCP App Bench] ui/get-context error:', error);
+              });
+          });
+
         // Action button: Call Tool
         document
           .getElementById('btn-tools-call')
@@ -958,32 +988,6 @@
               });
           });
 
-        // Action button: List Resources
-        document
-          .getElementById('btn-resources-list')
-          .addEventListener('click', function () {
-            sendRequest('resources/list', {})
-              .then(function (result) {
-                console.log('[MCP App Bench] resources/list response:', result);
-              })
-              .catch(function (error) {
-                console.error('[MCP App Bench] resources/list error:', error);
-              });
-          });
-
-        // Action button: List Resource Templates
-        document
-          .getElementById('btn-resources-templates-list')
-          .addEventListener('click', function () {
-            sendRequest('resources/templates/list', {})
-              .then(function (result) {
-                console.log('[MCP App Bench] resources/templates/list response:', result);
-              })
-              .catch(function (error) {
-                console.error('[MCP App Bench] resources/templates/list error:', error);
-              });
-          });
-
         // Action button: Read Resource
         document
           .getElementById('btn-resources-read')
@@ -997,22 +1001,7 @@
               });
           });
 
-        // Action button: List Prompts
-        document
-          .getElementById('btn-prompts-list')
-          .addEventListener('click', function () {
-            sendRequest('prompts/list', {})
-              .then(function (result) {
-                console.log('[MCP App Bench] prompts/list response:', result);
-              })
-              .catch(function (error) {
-                console.error('[MCP App Bench] prompts/list error:', error);
-              });
-          });
-
         // Action button: Log Message
-        // Note: Per spec this is a notification (no response expected), but we send as request
-        // during development to get feedback on whether the host handled it.
         document
           .getElementById('btn-notifications-message')
           .addEventListener('click', function () {

@@ -164,25 +164,6 @@ export interface UIResourceReadResponse {
   contents: UIResourceContent[]
 }
 
-// =============================================================================
-// Tool Metadata Types
-// =============================================================================
-
-/**
- * Tool metadata for associating tools with UI resources.
- *
- * Tools are associated with UI resources through the `_meta` field.
- */
-export interface UIToolMeta {
-  /**
-   * URI of the UI resource to use for rendering.
-   *
-   * If present and host supports MCP Apps, host renders tool results
-   * using the specified UI resource.
-   */
-  "ui/resourceUri"?: `ui://${string}`
-}
-
 /**
  * Extended tool definition with UI metadata.
  */
@@ -191,7 +172,9 @@ export interface UITool {
   description: string
   inputSchema: object
   outputSchema?: object
-  _meta?: UIToolMeta
+  _meta?: {
+    ui?: `ui://${string}`
+  }
 }
 
 // =============================================================================
