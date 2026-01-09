@@ -29,6 +29,105 @@
   // HostContext Schema (for validation)
   // ==========================================================================
 
+  // Style variable keys from the MCP Apps spec
+  const styleVariableKeys = [
+    // Background colors (10)
+    "--color-background-primary",
+    "--color-background-secondary",
+    "--color-background-tertiary",
+    "--color-background-inverse",
+    "--color-background-ghost",
+    "--color-background-info",
+    "--color-background-danger",
+    "--color-background-success",
+    "--color-background-warning",
+    "--color-background-disabled",
+    // Text colors (10)
+    "--color-text-primary",
+    "--color-text-secondary",
+    "--color-text-tertiary",
+    "--color-text-inverse",
+    "--color-text-info",
+    "--color-text-danger",
+    "--color-text-success",
+    "--color-text-warning",
+    "--color-text-disabled",
+    "--color-text-ghost",
+    // Border colors (10)
+    "--color-border-primary",
+    "--color-border-secondary",
+    "--color-border-tertiary",
+    "--color-border-inverse",
+    "--color-border-ghost",
+    "--color-border-info",
+    "--color-border-danger",
+    "--color-border-success",
+    "--color-border-warning",
+    "--color-border-disabled",
+    // Ring colors (7)
+    "--color-ring-primary",
+    "--color-ring-secondary",
+    "--color-ring-inverse",
+    "--color-ring-info",
+    "--color-ring-danger",
+    "--color-ring-success",
+    "--color-ring-warning",
+    // Typography - Family (2)
+    "--font-sans",
+    "--font-mono",
+    // Typography - Weight (4)
+    "--font-weight-normal",
+    "--font-weight-medium",
+    "--font-weight-semibold",
+    "--font-weight-bold",
+    // Typography - Text Size (4)
+    "--font-text-xs-size",
+    "--font-text-sm-size",
+    "--font-text-md-size",
+    "--font-text-lg-size",
+    // Typography - Heading Size (7)
+    "--font-heading-xs-size",
+    "--font-heading-sm-size",
+    "--font-heading-md-size",
+    "--font-heading-lg-size",
+    "--font-heading-xl-size",
+    "--font-heading-2xl-size",
+    "--font-heading-3xl-size",
+    // Typography - Text Line Height (4)
+    "--font-text-xs-line-height",
+    "--font-text-sm-line-height",
+    "--font-text-md-line-height",
+    "--font-text-lg-line-height",
+    // Typography - Heading Line Height (7)
+    "--font-heading-xs-line-height",
+    "--font-heading-sm-line-height",
+    "--font-heading-md-line-height",
+    "--font-heading-lg-line-height",
+    "--font-heading-xl-line-height",
+    "--font-heading-2xl-line-height",
+    "--font-heading-3xl-line-height",
+    // Border radius (6)
+    "--border-radius-xs",
+    "--border-radius-sm",
+    "--border-radius-md",
+    "--border-radius-lg",
+    "--border-radius-xl",
+    "--border-radius-full",
+    // Border width (1)
+    "--border-width-regular",
+    // Shadows (4)
+    "--shadow-hairline",
+    "--shadow-sm",
+    "--shadow-md",
+    "--shadow-lg",
+  ]
+
+  // Build the variables schema dynamically
+  const styleVariablesSchema = {}
+  styleVariableKeys.forEach(function (key) {
+    styleVariablesSchema[key] = { type: "string", optional: true }
+  })
+
   // HostContext Schema based on MCP Apps spec
   // Note: All top-level properties are optional (?)
   // containerDimensions uses union types for height/maxHeight and width/maxWidth
@@ -56,7 +155,11 @@
           type: "object",
           optional: true,
           children: {
-            variables: { type: "object", optional: true },
+            variables: {
+              type: "object",
+              optional: true,
+              children: styleVariablesSchema,
+            },
             css: {
               type: "object",
               optional: true,
