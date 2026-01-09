@@ -571,6 +571,191 @@
   }
 
   // ==========================================================================
+  // Test Runner
+  // ==========================================================================
+
+  /**
+   * Generate test cases from the hostContextSchema
+   * Returns an array of { path, expectedType, enumValues?, hasChildren }
+   */
+  function generateTestCases(schema, prefix) {
+    const tests = []
+    prefix = prefix || ""
+
+    for (const key in schema) {
+      const fullPath = prefix ? prefix + "." + key : key
+      const entry = schema[key]
+
+      tests.push({
+        path: fullPath,
+        expectedType: entry.type,
+        enumValues: entry.enum || null,
+        hasChildren: !!entry.children,
+      })
+
+      if (entry.children) {
+        const childTests = generateTestCases(entry.children, fullPath)
+        tests.push.apply(tests, childTests)
+      }
+    }
+
+    return tests
+  }
+
+  /**
+   * Get a value from an object by dot-notation path
+   */
+  function getValueByPath(obj, path) {
+    const parts = path.split(".")
+    let current = obj
+    for (let i = 0; i < parts.length; i++) {
+      if (current === null || current === undefined) {
+        return { found: false, value: undefined }
+      }
+      if (!(parts[i] in current)) {
+        return { found: false, value: undefined }
+      }
+      current = current[parts[i]]
+    }
+    return { found: true, value: current }
+  }
+
+  /**
+   * Run a single test case against the host data
+   * Returns { status: 'pass'|'fail'|'warn', message, actualValue, actualType }
+   */
+  function runTestCase(testCase, hostData) {
+    const result = getValueByPath(hostData, testCase.path)
+
+    if (!result.found) {
+      return {
+        status: "fail",
+        message: "Property not provided",
+        actualValue: undefined,
+        actualType: "undefined",
+      }
+    }
+
+    const value = result.value
+    const actualType =
+      value === null ? "null" : Array.isArray(value) ? "array" : typeof value
+
+    // Check type
+    const expectedTypes = Array.isArray(testCase.expectedType)
+      ? testCase.expectedType
+      : [testCase.expectedType]
+    const typeMatches = expectedTypes.indexOf(actualType) !== -1
+
+    if (!typeMatches) {
+      return {
+        status: "fail",
+        message:
+          "Expected " + expectedTypes.join(" | ") + ", got " + actualType,
+        actualValue: value,
+        actualType: actualType,
+      }
+    }
+
+    // Check enum values if specified
+    if (testCase.enumValues && testCase.enumValues.indexOf(value) === -1) {
+      return {
+        status: "warn",
+        message:
+          'Value "' +
+          value +
+          '" not in expected: [' +
+          testCase.enumValues.join(", ") +
+          "]",
+        actualValue: value,
+        actualType: actualType,
+      }
+    }
+
+    return {
+      status: "pass",
+      message: "OK",
+      actualValue: value,
+      actualType: actualType,
+    }
+  }
+
+  /**
+   * Find unexpected properties in the host data that aren't in the schema
+   */
+  function findUnexpectedProperties(hostData, schema, prefix) {
+    const unexpected = []
+    prefix = prefix || ""
+
+    if (!hostData || typeof hostData !== "object" || Array.isArray(hostData)) {
+      return unexpected
+    }
+
+    for (const key in hostData) {
+      if (!hostData.hasOwnProperty(key)) continue
+      const fullPath = prefix ? prefix + "." + key : key
+
+      if (!(key in schema)) {
+        unexpected.push({
+          path: fullPath,
+          value: hostData[key],
+          type:
+            hostData[key] === null
+              ? "null"
+              : Array.isArray(hostData[key])
+                ? "array"
+                : typeof hostData[key],
+        })
+        // Also add nested unexpected properties
+        if (
+          typeof hostData[key] === "object" &&
+          hostData[key] !== null &&
+          !Array.isArray(hostData[key])
+        ) {
+          const nested = findUnexpectedProperties(hostData[key], {}, fullPath)
+          unexpected.push.apply(unexpected, nested)
+        }
+      } else if (
+        schema[key].children &&
+        typeof hostData[key] === "object" &&
+        !Array.isArray(hostData[key])
+      ) {
+        const nested = findUnexpectedProperties(
+          hostData[key],
+          schema[key].children,
+          fullPath
+        )
+        unexpected.push.apply(unexpected, nested)
+      }
+    }
+
+    return unexpected
+  }
+
+  /**
+   * Format a value for display in test results
+   */
+  function formatTestValue(value, maxLength) {
+    maxLength = maxLength || 50
+    if (value === undefined) return "undefined"
+    if (value === null) return "null"
+    if (typeof value === "string") {
+      const display =
+        value.length > maxLength ? value.substring(0, maxLength) + "..." : value
+      return '"' + display + '"'
+    }
+    if (typeof value === "boolean" || typeof value === "number") {
+      return String(value)
+    }
+    if (Array.isArray(value)) {
+      return "[" + value.length + " items]"
+    }
+    if (typeof value === "object") {
+      return "{" + Object.keys(value).length + " keys}"
+    }
+    return String(value)
+  }
+
+  // ==========================================================================
   // Styles Helpers
   // ==========================================================================
 
@@ -955,6 +1140,13 @@
     validateHostContext: validateHostContext,
     getPathValidationStatus: getPathValidationStatus,
     hostContextSchema: hostContextSchema,
+
+    // Test Runner
+    generateTestCases: generateTestCases,
+    getValueByPath: getValueByPath,
+    runTestCase: runTestCase,
+    findUnexpectedProperties: findUnexpectedProperties,
+    formatTestValue: formatTestValue,
 
     // Styles
     injectStyleVariables: injectStyleVariables,

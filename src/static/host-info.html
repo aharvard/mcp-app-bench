@@ -21,8 +21,15 @@
       <div class="terminal">
         <div class="terminal-grid">
           <div class="terminal-section">
-            <h2>Host Data</h2>
-            <div id="host-info-content">Initializing...</div>
+            <h2>HostContext Validation</h2>
+            <div id="test-runner-content" class="test-runner">
+              <div class="test-summary">
+                <div class="test-summary-status is-running">
+                  <div class="test-summary-spinner"></div>
+                  <span>Running tests...</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div id="inspector-footer" class="inspector-footer"></div>
@@ -32,148 +39,303 @@
     <script src="{{BASE_URL}}/shell/shell.js"></script>
     <script>
       (function () {
-        function renderHostInfo() {
-          const container = document.getElementById('host-info-content');
-          const hostInfo = MCPAppShell.getHostInfo();
+        // Test state
+        let testCases = [];
+        let testResults = [];
+        let unexpectedProps = [];
+        let currentTestIndex = 0;
+        let isRunning = false;
+
+        // Group tests by their top-level property
+        function groupTestsByProperty(tests, results) {
+          const groups = {};
           
-          if (!container || !hostInfo) {
-            if (container) container.innerHTML = 'No host data available';
-            return;
+          tests.forEach(function(test, index) {
+            // Get the second-level property (e.g., "hostContext.theme" -> "theme")
+            const parts = test.path.split('.');
+            const groupKey = parts.length > 1 ? parts[1] : parts[0];
+            
+            if (!groups[groupKey]) {
+              groups[groupKey] = {
+                name: groupKey,
+                tests: [],
+                results: []
+              };
+            }
+            
+            groups[groupKey].tests.push(test);
+            groups[groupKey].results.push(results[index] || null);
+          });
+          
+          return Object.values(groups);
+        }
+
+        // Get group status based on test results
+        function getGroupStatus(results) {
+          const validResults = results.filter(function(r) { return r !== null; });
+          if (validResults.length === 0) return 'pending';
+          
+          const hasFail = validResults.some(function(r) { return r.status === 'fail'; });
+          const hasWarn = validResults.some(function(r) { return r.status === 'warn'; });
+          
+          if (hasFail) return 'fail';
+          if (hasWarn) return 'warn';
+          return 'pass';
+        }
+
+        // Get status icon
+        function getStatusIcon(status) {
+          switch (status) {
+            case 'pass': return '✓';
+            case 'fail': return '✗';
+            case 'warn': return '⚠';
+            case 'pending': return '○';
+            default: return '○';
           }
+        }
 
-          // Validate host context against schema
-          const validation = MCPAppShell.validateHostContext(hostInfo);
-
-          // Flatten the host info to dot notation rows (5 levels deep)
-          // Skip styles.variables and styles.css.fonts (shown in styles inspector)
-          let allRows = [];
-          MCPAppShell.flattenObject(allRows, hostInfo, '', 4, 0, [
-            { path: 'hostContext.styles.variables', message: 'see Host Styles inspector' },
-            { path: 'hostContext.styles.css.fonts', message: 'see Host Styles inspector' }
-          ]);
-
-          // Add missing fields from validation (only hostContext fields)
-          validation.missing.forEach(function (missingPath) {
-            if (missingPath.indexOf('hostContext.') === 0) {
-              const exists = allRows.some(function (r) {
-                return r.key === missingPath;
-              });
-              if (!exists) {
-                allRows.push({ key: missingPath, value: 'not provided', type: 'missing' });
-              }
-            }
-          });
-
-          // Sort rows alphabetically by key
-          allRows.sort(function (a, b) {
-            return a.key.localeCompare(b.key);
-          });
-
-          // Build validation summary
-          const missingHostContext = validation.missing.filter(function (p) {
-            return p.indexOf('hostContext.') === 0;
-          });
-          const unexpectedHostContext = validation.unexpected.filter(function (p) {
-            return p.indexOf('hostContext.') === 0;
-          });
-          const hasValidationIssues = missingHostContext.length > 0 || unexpectedHostContext.length > 0;
-
-          // Build HTML
-          let html = '<div class="host-data-wrapper">';
-
-          // Validation summary badges
-          if (hasValidationIssues) {
-            html += '<div class="validation-summary">';
-            if (missingHostContext.length > 0) {
-              html += '<span class="validation-badge is-missing" title="Expected fields not provided by host" id="badge-missing">';
-              html += '! <span class="validation-badge-count">' + missingHostContext.length + '</span> missing';
-              html += '</span>';
-            }
-            if (unexpectedHostContext.length > 0) {
-              html += '<span class="validation-badge is-unexpected" title="Fields provided but not in HostContext spec" id="badge-unexpected">';
-              html += '* <span class="validation-badge-count">' + unexpectedHostContext.length + '</span> unexpected';
-              html += '</span>';
-            }
-            html += '</div>';
+        // Format path for display (highlight leaf)
+        function formatPath(path) {
+          const parts = path.split('.');
+          if (parts.length <= 2) {
+            return '<span class="test-item-path-leaf">' + MCPAppShell.escapeHtml(path) + '</span>';
           }
+          
+          const leaf = parts.pop();
+          const prefix = parts.join('.');
+          return '<span class="test-item-path-segment">' + MCPAppShell.escapeHtml(prefix) + '.</span>' +
+                 '<span class="test-item-path-leaf">' + MCPAppShell.escapeHtml(leaf) + '</span>';
+        }
 
-          // Render rows
-          html += '<div class="host-data-list' + (hasValidationIssues ? ' has-validation' : '') + '">';
-          allRows.forEach(function (row, index) {
-            const validationStatus = MCPAppShell.getPathValidationStatus(row.key, validation);
-            const statusClass = validationStatus !== 'valid' ? ' is-' + validationStatus : '';
+        // Render the test runner UI
+        function renderTestRunner() {
+          const container = document.getElementById('test-runner-content');
+          if (!container) return;
 
-            html += '<div class="host-data-row' + statusClass + '" data-path="' + MCPAppShell.escapeHtml(row.key) + '">';
+          const groups = groupTestsByProperty(testCases, testResults);
+          
+          // Calculate summary counts
+          const passCount = testResults.filter(function(r) { return r && r.status === 'pass'; }).length;
+          const failCount = testResults.filter(function(r) { return r && r.status === 'fail'; }).length;
+          const warnCount = testResults.filter(function(r) { return r && r.status === 'warn'; }).length;
+          const totalTests = testCases.length;
+          const completedTests = testResults.filter(function(r) { return r !== null; }).length;
 
-            // Status indicator
-            let statusHtml = '';
-            if (hasValidationIssues && validationStatus !== 'valid') {
-              if (validationStatus === 'missing') {
-                statusHtml = '<span class="host-data-status"><span class="host-data-status-missing">!</span></span>';
-              } else if (validationStatus === 'unexpected') {
-                statusHtml = '<span class="host-data-status"><span class="host-data-status-unexpected">*</span></span>';
-              }
-            }
-
-            html += MCPAppShell.renderKeyWithSegments(row.key, statusHtml);
-            html += '<span class="host-data-value-cell">';
-            if (row.type === 'missing') {
-              html += '<span class="host-data-value is-missing-value">' + MCPAppShell.escapeHtml(row.value) + '</span>';
+          // Determine overall status
+          let overallStatus = 'running';
+          let statusText = 'Running tests...';
+          let statusIcon = '';
+          
+          if (!isRunning && completedTests === totalTests) {
+            if (failCount > 0) {
+              overallStatus = 'fail';
+              statusText = failCount + ' test' + (failCount === 1 ? '' : 's') + ' failed';
+              statusIcon = '✗';
+            } else if (warnCount > 0) {
+              overallStatus = 'warn';
+              statusText = 'All tests passed with ' + warnCount + ' warning' + (warnCount === 1 ? '' : 's');
+              statusIcon = '⚠';
             } else {
-              html += MCPAppShell.renderHostDataValue(row, 'hd-' + index);
+              overallStatus = 'pass';
+              statusText = 'All ' + totalTests + ' tests passed';
+              statusIcon = '✓';
             }
-            html += '</span>';
+          }
+
+          let html = '';
+
+          // Summary header
+          html += '<div class="test-summary">';
+          html += '<div class="test-summary-status is-' + overallStatus + '">';
+          if (isRunning) {
+            html += '<div class="test-summary-spinner"></div>';
+          } else if (statusIcon) {
+            html += '<span>' + statusIcon + '</span>';
+          }
+          html += '<span>' + statusText + '</span>';
+          html += '</div>';
+          
+          html += '<div class="test-summary-counts">';
+          html += '<span class="test-count is-pass"><span class="test-count-value">' + passCount + '</span> passed</span>';
+          if (failCount > 0) {
+            html += '<span class="test-count is-fail"><span class="test-count-value">' + failCount + '</span> failed</span>';
+          }
+          if (warnCount > 0) {
+            html += '<span class="test-count is-warn"><span class="test-count-value">' + warnCount + '</span> warnings</span>';
+          }
+          if (unexpectedProps.length > 0) {
+            html += '<span class="test-count is-unexpected"><span class="test-count-value">' + unexpectedProps.length + '</span> unexpected</span>';
+          }
+          html += '</div>';
+          html += '</div>';
+
+          // Test groups
+          html += '<div class="test-groups">';
+          
+          groups.forEach(function(group) {
+            const groupStatus = getGroupStatus(group.results);
+            const groupPassCount = group.results.filter(function(r) { return r && r.status === 'pass'; }).length;
+            const groupFailCount = group.results.filter(function(r) { return r && r.status === 'fail'; }).length;
+            const groupWarnCount = group.results.filter(function(r) { return r && r.status === 'warn'; }).length;
+            
+            // Auto-expand groups with failures
+            const shouldExpand = groupStatus === 'fail' || groupStatus === 'warn';
+            
+            html += '<div class="test-group' + (shouldExpand ? ' is-expanded' : '') + '" data-group="' + MCPAppShell.escapeHtml(group.name) + '">';
+            
+            // Group header
+            html += '<div class="test-group-header">';
+            html += '<span class="test-group-toggle">▶</span>';
+            html += '<span class="test-group-icon is-' + groupStatus + '">' + getStatusIcon(groupStatus) + '</span>';
+            html += '<span class="test-group-name">' + MCPAppShell.escapeHtml(group.name) + '</span>';
+            
+            // Badge showing counts
+            let badgeText = groupPassCount + '/' + group.tests.length;
+            let badgeClass = 'is-pass';
+            if (groupFailCount > 0) {
+              badgeClass = 'is-fail';
+            } else if (groupWarnCount > 0) {
+              badgeClass = 'is-warn';
+            }
+            html += '<span class="test-group-badge ' + badgeClass + '">' + badgeText + '</span>';
             html += '</div>';
+            
+            // Group content (individual tests)
+            html += '<div class="test-group-content">';
+            
+            group.tests.forEach(function(test, i) {
+              const result = group.results[i];
+              const status = result ? result.status : 'pending';
+              
+              html += '<div class="test-item">';
+              html += '<span class="test-item-icon is-' + status + '">' + getStatusIcon(status) + '</span>';
+              html += '<span class="test-item-path">' + formatPath(test.path) + '</span>';
+              html += '<span class="test-item-result">';
+              
+              if (result) {
+                if (result.status === 'pass') {
+                  html += '<span class="test-item-value">' + MCPAppShell.escapeHtml(MCPAppShell.formatTestValue(result.actualValue, 30)) + '</span>';
+                } else if (result.status === 'fail') {
+                  html += '<span class="test-item-message">' + MCPAppShell.escapeHtml(result.message) + '</span>';
+                } else if (result.status === 'warn') {
+                  html += '<span class="test-item-message is-warn">' + MCPAppShell.escapeHtml(result.message) + '</span>';
+                }
+              }
+              
+              html += '</span>';
+              html += '</div>';
+            });
+            
+            html += '</div>'; // test-group-content
+            html += '</div>'; // test-group
           });
-          html += '</div>';
-          html += '</div>';
+          
+          html += '</div>'; // test-groups
+
+          // Unexpected properties section
+          if (unexpectedProps.length > 0) {
+            html += '<div class="test-unexpected">';
+            html += '<div class="test-unexpected-header">';
+            html += '<span>⚡</span>';
+            html += '<span>Unexpected Properties (' + unexpectedProps.length + ')</span>';
+            html += '</div>';
+            
+            html += '<div class="test-unexpected-list">';
+            unexpectedProps.forEach(function(prop) {
+              html += '<div class="test-unexpected-item">';
+              html += '<span class="test-unexpected-path">' + MCPAppShell.escapeHtml(prop.path) + '</span>';
+              html += '<span class="test-unexpected-value">' + MCPAppShell.escapeHtml(MCPAppShell.formatTestValue(prop.value, 30)) + '</span>';
+              html += '</div>';
+            });
+            html += '</div>';
+            html += '</div>';
+          }
+
+          // Raw data explorer
+          const hostInfo = MCPAppShell.getHostInfo();
+          if (hostInfo) {
+            html += '<div class="test-raw-data" id="raw-data-section">';
+            html += '<div class="test-raw-data-header">';
+            html += '<span class="test-raw-data-toggle">▶</span>';
+            html += '<span class="test-raw-data-title">Raw Host Data</span>';
+            html += '</div>';
+            html += '<div class="test-raw-data-content" id="raw-data-content"></div>';
+            html += '</div>';
+          }
 
           container.innerHTML = html;
 
-          // Setup hover effects
-          const list = container.querySelector('.host-data-list');
-          MCPAppShell.setupDataListHoverEffects(list);
+          // Render raw JSON (collapsed to depth 2)
+          if (hostInfo) {
+            MCPAppShell.renderCollapsibleJson('raw-data-content', hostInfo, 2);
+          }
 
-          // Setup validation badge hover effects
-          setupValidationBadgeHover(container, list, validation);
+          // Setup group toggle handlers
+          container.querySelectorAll('.test-group-header').forEach(function(header) {
+            header.addEventListener('click', function() {
+              header.parentElement.classList.toggle('is-expanded');
+            });
+          });
+
+          // Setup raw data toggle handler
+          var rawDataSection = document.getElementById('raw-data-section');
+          if (rawDataSection) {
+            var rawDataHeader = rawDataSection.querySelector('.test-raw-data-header');
+            if (rawDataHeader) {
+              rawDataHeader.addEventListener('click', function() {
+                rawDataSection.classList.toggle('is-expanded');
+              });
+            }
+          }
 
           MCPAppShell.sendSizeChanged();
         }
 
-        function setupValidationBadgeHover(container, list, validation) {
-          if (!list) return;
+        // Run tests with animation
+        function runTests() {
+          const hostInfo = MCPAppShell.getHostInfo();
+          if (!hostInfo) return;
 
-          const rows = list.querySelectorAll('.host-data-row');
-          const missingBadge = document.getElementById('badge-missing');
-          const unexpectedBadge = document.getElementById('badge-unexpected');
+          // Generate test cases from schema
+          testCases = MCPAppShell.generateTestCases(MCPAppShell.hostContextSchema, '');
+          testResults = new Array(testCases.length).fill(null);
+          
+          // Find unexpected properties
+          unexpectedProps = MCPAppShell.findUnexpectedProperties(
+            { hostContext: hostInfo.hostContext },
+            MCPAppShell.hostContextSchema,
+            ''
+          );
 
-          function setupBadge(badge, isMissing) {
-            if (!badge) return;
+          isRunning = true;
+          currentTestIndex = 0;
 
-            badge.addEventListener('mouseenter', function () {
-              list.classList.add('has-hover');
-              rows.forEach(function (row) {
-                const shouldHighlight = isMissing 
-                  ? row.classList.contains('is-missing')
-                  : row.classList.contains('is-unexpected');
-                if (shouldHighlight) {
-                  row.classList.add('is-highlighted');
-                } else {
-                  row.classList.remove('is-highlighted');
-                }
-              });
-            });
+          // Initial render
+          renderTestRunner();
 
-            badge.addEventListener('mouseleave', function () {
-              list.classList.remove('has-hover');
-              rows.forEach(function (row) {
-                row.classList.remove('is-highlighted');
-              });
-            });
+          // Run tests with staggered timing for visual effect
+          function runNextTest() {
+            if (currentTestIndex >= testCases.length) {
+              isRunning = false;
+              renderTestRunner();
+              return;
+            }
+
+            const test = testCases[currentTestIndex];
+            const result = MCPAppShell.runTestCase(test, { hostContext: hostInfo.hostContext });
+            testResults[currentTestIndex] = result;
+            currentTestIndex++;
+
+            renderTestRunner();
+
+            // Small delay between tests for visual feedback
+            // Faster for passing tests, slightly slower for failures
+            const delay = result.status === 'pass' ? 15 : 30;
+            setTimeout(runNextTest, delay);
           }
 
-          setupBadge(missingBadge, true);
-          setupBadge(unexpectedBadge, false);
+          // Start running tests
+          setTimeout(runNextTest, 100);
         }
 
         // Initialize
@@ -185,16 +347,17 @@
           }
         });
 
-        // Listen for tool result to render content
+        // Listen for tool result to start tests
         window.addEventListener('mcp-tool-result', function () {
-          renderHostInfo();
+          runTests();
           MCPAppShell.setupInspectorFooter('inspect-host-info');
         });
 
         // Listen for host context changes
         window.addEventListener('mcp-host-context-changed', function () {
           if (MCPAppShell.isReady()) {
-            renderHostInfo();
+            // Re-run tests when host context changes
+            runTests();
           }
         });
       })();
