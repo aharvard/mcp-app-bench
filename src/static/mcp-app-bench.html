@@ -1310,8 +1310,12 @@
               ? prefix + '.' + key
               : key;
 
-            // Special case: replace hostContext.styles.variables with a reference
+            // Special case: replace hostContext.styles.variables and hostContext.styles.css.fonts with references
             if (fullKey === 'hostContext.styles.variables') {
+              allRows.push({key: fullKey, value: 'refer to Host Styles section', type: 'reference'});
+              continue;
+            }
+            if (fullKey === 'hostContext.styles.css.fonts') {
               allRows.push({key: fullKey, value: 'refer to Host Styles section', type: 'reference'});
               continue;
             }
@@ -1650,8 +1654,8 @@
             'Ring Colors': [],
             'Font Families': [],
             'Font Weights': [],
-            'Heading Sizes': [],
-            'Text Sizes': [],
+            'Heading Styles': [],
+            'Text Styles': [],
             'Border Radius': [],
             'Shadows': [],
             'Other': []
@@ -1671,9 +1675,9 @@
             } else if (key.startsWith('--font-weight-')) {
               categories['Font Weights'].push([key, value]);
             } else if (key.startsWith('--font-heading-')) {
-              categories['Heading Sizes'].push([key, value]);
+              categories['Heading Styles'].push([key, value]);
             } else if (key.startsWith('--font-text-')) {
-              categories['Text Sizes'].push([key, value]);
+              categories['Text Styles'].push([key, value]);
             } else if (key.startsWith('--border-radius-') || key.startsWith('--border-width-')) {
               categories['Border Radius'].push([key, value]);
             } else if (key.startsWith('--shadow-')) {
@@ -1886,9 +1890,9 @@
               html += renderFontFamilies(vars, allVars);
             } else if (category === 'Font Weights') {
               html += renderFontWeights(vars, allVars);
-            } else if (category === 'Heading Sizes') {
+            } else if (category === 'Heading Styles') {
               html += renderTypeScale(vars, allVars, true);
-            } else if (category === 'Text Sizes') {
+            } else if (category === 'Text Styles') {
               html += renderTypeScale(vars, allVars, false);
             } else {
               // Use table for other values
