@@ -87,50 +87,59 @@
     </style>
   </head>
   <body>
-    <h1>MCP App Bench</h1>
-    <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
-    
-    <p class="launcher-intro">
-      Select an inspector to evaluate your MCP host's support for MCP Apps. 
-      Each inspector focuses on a specific aspect of the MCP Apps specification.
-    </p>
+    <!-- Loading State -->
+    <div id="app-loading" class="app-loading">
+      <div class="app-loading-spinner"></div>
+      <div class="app-loading-text">Waiting for tool result...</div>
+    </div>
 
-    <div class="terminal">
-      <div class="launcher-grid">
-        <div class="launcher-card" data-tool="inspect-host-info">
-          <span class="launcher-card-icon">🖥️</span>
-          <h3 class="launcher-card-title">Host Info</h3>
-          <p class="launcher-card-description">
-            Inspect host context, capabilities, protocol version, and validate against the HostContext schema.
-          </p>
-          <p class="launcher-card-tool">tool: inspect-host-info</p>
-        </div>
+    <!-- Main Content (hidden until ready) -->
+    <div id="app-content" class="app-content">
+      <h1>MCP App Bench</h1>
+      <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+      
+      <p class="launcher-intro">
+        Select an inspector to evaluate your MCP host's support for MCP Apps. 
+        Each inspector focuses on a specific aspect of the MCP Apps specification.
+      </p>
 
-        <div class="launcher-card" data-tool="inspect-host-styles">
-          <span class="launcher-card-icon">🎨</span>
-          <h3 class="launcher-card-title">Host Styles</h3>
-          <p class="launcher-card-description">
-            Visualize host-provided CSS variables, typography, colors, shadows, and border radius tokens.
-          </p>
-          <p class="launcher-card-tool">tool: inspect-host-styles</p>
-        </div>
+      <div class="terminal">
+        <div class="launcher-grid">
+          <div class="launcher-card" data-tool="inspect-host-info">
+            <span class="launcher-card-icon">🖥️</span>
+            <h3 class="launcher-card-title">Host Info</h3>
+            <p class="launcher-card-description">
+              Inspect host context, capabilities, protocol version, and validate against the HostContext schema.
+            </p>
+            <p class="launcher-card-tool">tool: inspect-host-info</p>
+          </div>
 
-        <div class="launcher-card" data-tool="inspect-messaging">
-          <span class="launcher-card-icon">💬</span>
-          <h3 class="launcher-card-title">Messaging</h3>
-          <p class="launcher-card-description">
-            Test UI↔Host and UI↔Server messaging. Monitor requests, responses, and notifications.
-          </p>
-          <p class="launcher-card-tool">tool: inspect-messaging</p>
-        </div>
+          <div class="launcher-card" data-tool="inspect-host-styles">
+            <span class="launcher-card-icon">🎨</span>
+            <h3 class="launcher-card-title">Host Styles</h3>
+            <p class="launcher-card-description">
+              Visualize host-provided CSS variables, typography, colors, shadows, and border radius tokens.
+            </p>
+            <p class="launcher-card-tool">tool: inspect-host-styles</p>
+          </div>
 
-        <div class="launcher-card" data-tool="inspect-tool-data">
-          <span class="launcher-card-icon">🔧</span>
-          <h3 class="launcher-card-title">Tool Data</h3>
-          <p class="launcher-card-description">
-            Inspect tool lifecycle events: input, partial input, results, and cancellation.
-          </p>
-          <p class="launcher-card-tool">tool: inspect-tool-data</p>
+          <div class="launcher-card" data-tool="inspect-messaging">
+            <span class="launcher-card-icon">💬</span>
+            <h3 class="launcher-card-title">Messaging</h3>
+            <p class="launcher-card-description">
+              Test UI↔Host and UI↔Server messaging. Monitor requests, responses, and notifications.
+            </p>
+            <p class="launcher-card-tool">tool: inspect-messaging</p>
+          </div>
+
+          <div class="launcher-card" data-tool="inspect-tool-data">
+            <span class="launcher-card-icon">🔧</span>
+            <h3 class="launcher-card-title">Tool Data</h3>
+            <p class="launcher-card-description">
+              Inspect tool lifecycle events: input, partial input, results, and cancellation.
+            </p>
+            <p class="launcher-card-tool">tool: inspect-tool-data</p>
+          </div>
         </div>
       </div>
     </div>
@@ -145,6 +154,11 @@
           onInitialized: function (result) {
             console.log('[Launcher] Initialized with host:', result.hostInfo);
           }
+        });
+
+        // Listen for tool result to show content
+        window.addEventListener('mcp-tool-result', function () {
+          // Content is shown automatically by shell
         });
 
         // Handle card clicks - call the corresponding tool

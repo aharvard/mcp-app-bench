@@ -5,20 +5,26 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css">
-    <style>
-      /* Host Styles specific styles */
-    </style>
   </head>
   <body>
-    <h1>Host Styles Inspector</h1>
-    <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
-    
-    <div class="terminal">
-      <div class="terminal-grid">
-        <div class="terminal-section">
-          <h2>Host Styles</h2>
-          <div class="styles-scroll" id="host-styles-content">
-            <div class="styles-empty">Waiting for host styles...</div>
+    <!-- Loading State -->
+    <div id="app-loading" class="app-loading">
+      <div class="app-loading-spinner"></div>
+      <div class="app-loading-text">Waiting for tool result...</div>
+    </div>
+
+    <!-- Main Content (hidden until ready) -->
+    <div id="app-content" class="app-content">
+      <h1>Host Styles Inspector</h1>
+      <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+      
+      <div class="terminal">
+        <div class="terminal-grid">
+          <div class="terminal-section">
+            <h2>Host Styles</h2>
+            <div class="styles-scroll" id="host-styles-content">
+              <div class="styles-empty">Waiting for host styles...</div>
+            </div>
           </div>
         </div>
       </div>
@@ -171,8 +177,11 @@
           return html;
         }
 
-        function renderHostStyles(styles) {
+        function renderHostStyles() {
           const container = document.getElementById('host-styles-content');
+          const hostInfo = MCPAppShell.getHostInfo();
+          const styles = hostInfo && hostInfo.hostContext ? hostInfo.hostContext.styles : null;
+
           if (!container) return;
           
           if (!styles || !styles.variables || Object.keys(styles.variables).length === 0) {
@@ -248,17 +257,19 @@
           clientName: 'Host Styles Inspector',
           clientVersion: '1.0.0',
           onInitialized: function (result) {
-            if (result.hostContext && result.hostContext.styles) {
-              renderHostStyles(result.hostContext.styles);
-            }
+            // Content will render when tool-result is received
           }
         });
 
+        // Listen for tool result to render content
+        window.addEventListener('mcp-tool-result', function () {
+          renderHostStyles();
+        });
+
         // Listen for host context changes
-        window.addEventListener('mcp-host-context-changed', function (e) {
-          const hostInfo = MCPAppShell.getHostInfo();
-          if (hostInfo && hostInfo.hostContext && hostInfo.hostContext.styles) {
-            renderHostStyles(hostInfo.hostContext.styles);
+        window.addEventListener('mcp-host-context-changed', function () {
+          if (MCPAppShell.isReady()) {
+            renderHostStyles();
           }
         });
       })();

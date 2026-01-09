@@ -5,19 +5,25 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css">
-    <style>
-      /* Tool Data specific styles */
-    </style>
   </head>
   <body>
-    <h1>Tool Data Inspector</h1>
-    <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
-    
-    <div class="terminal">
-      <div class="terminal-grid">
-        <div class="terminal-section">
-          <h2>Tool Data</h2>
-          <div id="tool-data-content">Waiting for tool events...</div>
+    <!-- Loading State -->
+    <div id="app-loading" class="app-loading">
+      <div class="app-loading-spinner"></div>
+      <div class="app-loading-text">Waiting for tool result...</div>
+    </div>
+
+    <!-- Main Content (hidden until ready) -->
+    <div id="app-content" class="app-content">
+      <h1>Tool Data Inspector</h1>
+      <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+      
+      <div class="terminal">
+        <div class="terminal-grid">
+          <div class="terminal-section">
+            <h2>Tool Data</h2>
+            <div id="tool-data-content">Waiting for tool events...</div>
+          </div>
         </div>
       </div>
     </div>
@@ -69,25 +75,32 @@
           clientName: 'Tool Data Inspector',
           clientVersion: '1.0.0',
           onInitialized: function (result) {
-            renderToolData();
+            // Content will render when tool-result is received
           }
         });
 
-        // Listen for tool events
-        window.addEventListener('mcp-tool-input', function () {
-          renderToolData();
-        });
-
-        window.addEventListener('mcp-tool-input-partial', function () {
-          renderToolData();
-        });
-
+        // Listen for tool result to render content
         window.addEventListener('mcp-tool-result', function () {
           renderToolData();
         });
 
+        // Listen for other tool events
+        window.addEventListener('mcp-tool-input', function () {
+          if (MCPAppShell.isReady()) {
+            renderToolData();
+          }
+        });
+
+        window.addEventListener('mcp-tool-input-partial', function () {
+          if (MCPAppShell.isReady()) {
+            renderToolData();
+          }
+        });
+
         window.addEventListener('mcp-tool-cancelled', function () {
-          renderToolData();
+          if (MCPAppShell.isReady()) {
+            renderToolData();
+          }
         });
       })();
     </script>

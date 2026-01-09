@@ -19,6 +19,7 @@
     toolResult: null,
     toolCancelled: null,
   }
+  let isReady = false
 
   // Message log
   const messageLog = []
@@ -823,6 +824,28 @@
   resizeObserver.observe(document.body)
 
   // ==========================================================================
+  // Loading State Management
+  // ==========================================================================
+
+  function setReady() {
+    isReady = true
+    const loading = document.getElementById("app-loading")
+    const content = document.getElementById("app-content")
+    if (loading) loading.style.display = "none"
+    if (content) content.classList.add("is-ready")
+    sendSizeChanged()
+  }
+
+  function checkReady() {
+    return isReady
+  }
+
+  // Auto-set ready when tool-result is received
+  window.addEventListener("mcp-tool-result", function () {
+    setReady()
+  })
+
+  // ==========================================================================
   // Export Global API
   // ==========================================================================
 
@@ -837,6 +860,10 @@
     getMessageLog: function () {
       return messageLog.slice()
     },
+    isReady: checkReady,
+
+    // Loading state
+    setReady: setReady,
 
     // Messaging
     sendRequest: sendRequest,

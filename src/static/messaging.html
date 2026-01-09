@@ -5,42 +5,48 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css">
-    <style>
-      /* Messaging specific styles */
-    </style>
   </head>
   <body>
-    <h1>Messaging Inspector</h1>
-    <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
-    
-    <div class="terminal">
-      <div class="terminal-grid">
-        <div class="terminal-section">
-          <h2>Messaging</h2>
-          <div class="messaging-layout">
-            <div class="messaging-buttons">
-              <div class="messaging-buttons-group">
-                <h3 class="messaging-buttons-heading">UI → Host</h3>
-                <div class="messaging-buttons-list">
-                  <button class="action-btn" id="btn-open-link">ui/open-link</button>
-                  <button class="action-btn" id="btn-message">ui/message</button>
-                  <button class="action-btn" id="btn-size-change">ui/notifications/size-changed</button>
-                  <button class="action-btn" id="btn-get-context">ui/get-context</button>
+    <!-- Loading State -->
+    <div id="app-loading" class="app-loading">
+      <div class="app-loading-spinner"></div>
+      <div class="app-loading-text">Waiting for tool result...</div>
+    </div>
+
+    <!-- Main Content (hidden until ready) -->
+    <div id="app-content" class="app-content">
+      <h1>Messaging Inspector</h1>
+      <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+      
+      <div class="terminal">
+        <div class="terminal-grid">
+          <div class="terminal-section">
+            <h2>Messaging</h2>
+            <div class="messaging-layout">
+              <div class="messaging-buttons">
+                <div class="messaging-buttons-group">
+                  <h3 class="messaging-buttons-heading">UI → Host</h3>
+                  <div class="messaging-buttons-list">
+                    <button class="action-btn" id="btn-open-link">ui/open-link</button>
+                    <button class="action-btn" id="btn-message">ui/message</button>
+                    <button class="action-btn" id="btn-size-change">ui/notifications/size-changed</button>
+                    <button class="action-btn" id="btn-get-context">ui/get-context</button>
+                  </div>
+                </div>
+                <div class="messaging-buttons-group">
+                  <h3 class="messaging-buttons-heading">UI → Server</h3>
+                  <div class="messaging-buttons-list">
+                    <button class="action-btn" id="btn-tools-call">tools/call</button>
+                    <button class="action-btn" id="btn-resources-read">resources/read</button>
+                    <button class="action-btn" id="btn-notifications-message">notifications/message</button>
+                    <button class="action-btn" id="btn-ping">ping</button>
+                  </div>
                 </div>
               </div>
-              <div class="messaging-buttons-group">
-                <h3 class="messaging-buttons-heading">UI → Server</h3>
-                <div class="messaging-buttons-list">
-                  <button class="action-btn" id="btn-tools-call">tools/call</button>
-                  <button class="action-btn" id="btn-resources-read">resources/read</button>
-                  <button class="action-btn" id="btn-notifications-message">notifications/message</button>
-                  <button class="action-btn" id="btn-ping">ping</button>
-                </div>
+              <div class="messaging-log-container">
+                <h3 class="messaging-log-header">message log</h3>
+                <div class="message-log" id="message-log-content"></div>
               </div>
-            </div>
-            <div class="messaging-log-container">
-              <h3 class="messaging-log-header">message log</h3>
-              <div class="message-log" id="message-log-content"></div>
             </div>
           </div>
         </div>
@@ -90,13 +96,20 @@
           clientName: 'Messaging Inspector',
           clientVersion: '1.0.0',
           onInitialized: function (result) {
-            renderMessageLog();
+            // Content will render when tool-result is received
           }
+        });
+
+        // Listen for tool result to render content
+        window.addEventListener('mcp-tool-result', function () {
+          renderMessageLog();
         });
 
         // Listen for new messages
         window.addEventListener('mcp-message-logged', function () {
-          renderMessageLog();
+          if (MCPAppShell.isReady()) {
+            renderMessageLog();
+          }
         });
 
         // Button handlers

@@ -5,19 +5,25 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css">
-    <style>
-      /* Host Info specific styles */
-    </style>
   </head>
   <body>
-    <h1>Host Info Inspector</h1>
-    <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
-    
-    <div class="terminal">
-      <div class="terminal-grid">
-        <div class="terminal-section">
-          <h2>Host Data</h2>
-          <div id="host-info-content">Initializing...</div>
+    <!-- Loading State -->
+    <div id="app-loading" class="app-loading">
+      <div class="app-loading-spinner"></div>
+      <div class="app-loading-text">Waiting for tool result...</div>
+    </div>
+
+    <!-- Main Content (hidden until ready) -->
+    <div id="app-content" class="app-content">
+      <h1>Host Info Inspector</h1>
+      <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+      
+      <div class="terminal">
+        <div class="terminal-grid">
+          <div class="terminal-section">
+            <h2>Host Data</h2>
+            <div id="host-info-content">Initializing...</div>
+          </div>
         </div>
       </div>
     </div>
@@ -174,13 +180,20 @@
           clientName: 'Host Info Inspector',
           clientVersion: '1.0.0',
           onInitialized: function (result) {
-            renderHostInfo();
+            // Content will render when tool-result is received
           }
+        });
+
+        // Listen for tool result to render content
+        window.addEventListener('mcp-tool-result', function () {
+          renderHostInfo();
         });
 
         // Listen for host context changes
         window.addEventListener('mcp-host-context-changed', function () {
-          renderHostInfo();
+          if (MCPAppShell.isReady()) {
+            renderHostInfo();
+          }
         });
       })();
     </script>
