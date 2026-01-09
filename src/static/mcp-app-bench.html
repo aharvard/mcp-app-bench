@@ -145,14 +145,26 @@
         box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
       }
       .terminal-grid {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0 1.5rem;
       }
       .terminal-grid > .terminal-section {
+        grid-column: 1 / -1;
         padding: 1.5rem 24px;
       }
       .terminal-grid > .terminal-section:not(:last-child) {
         border-bottom: 1px solid var(--border);
+      }
+      /* Data sections use subgrid for aligned columns */
+      .terminal-grid > .terminal-section.has-data-list {
+        display: grid;
+        grid-template-columns: subgrid;
+      }
+      .terminal-section.has-data-list > h2,
+      .terminal-section.has-data-list > #tool-data-content,
+      .terminal-section.has-data-list > #host-info-content {
+        grid-column: 1 / -1;
       }
       .terminal-section h2 {
         margin: 0 0 0.75rem;
@@ -393,8 +405,8 @@
       /* Host Data dot notation styles */
       .host-data-list {
         display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 0 1.5rem;
+        grid-template-columns: subgrid;
+        grid-column: 1 / -1;
         font-family: "Victor Mono", ui-monospace, monospace;
         font-size: 0.8125rem;
         line-height: 1.6;
@@ -468,9 +480,11 @@
       .theme-light .host-data-value.is-reference {
         color: #9ca3af;
       }
-      /* Validation status indicators */
+      /* Validation status indicators - uses its own grid, not subgrid */
       .host-data-list.has-validation {
+        display: grid;
         grid-template-columns: 0.5rem auto 1fr;
+        grid-column: 1 / -1;
       }
       .host-data-status {
         text-align: center;
@@ -516,12 +530,13 @@
       }
       .validation-summary {
         position: absolute;
-        top: 0;
+        top: calc(-0.75rem - 1em);
         right: 0;
         display: flex;
         gap: 0.5rem;
         font-family: "Victor Mono", ui-monospace, monospace;
         font-size: 0.75rem;
+        line-height: 1;
       }
       .validation-badge {
         display: inline-flex;
@@ -603,11 +618,11 @@
     <h1>MCP App Bench</h1>
     <div class="terminal">
       <div class="terminal-grid">
-        <div class="terminal-section">
+        <div class="terminal-section has-data-list">
           <h2>Tool Data</h2>
           <div id="tool-data-content">Waiting...</div>
         </div>
-        <div class="terminal-section">
+        <div class="terminal-section has-data-list">
           <h2>Host Data</h2>
           <div id="host-info-content">Initializing...</div>
         </div>
