@@ -91,6 +91,7 @@
         color: var(--bg-primary);
         font-family: "Victor Mono", ui-monospace, monospace;
         font-size: 0.8125rem;
+        font-weight: 700;
         cursor: pointer;
         transition: all 0.15s ease;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -467,6 +468,100 @@
       .theme-light .host-data-value.is-reference {
         color: #9ca3af;
       }
+      /* Validation status indicators */
+      .host-data-list.has-validation {
+        grid-template-columns: 0.5rem auto 1fr;
+      }
+      .host-data-status {
+        text-align: center;
+        font-weight: 600;
+      }
+      .host-data-status-missing {
+        color: #f87171;
+      }
+      .theme-light .host-data-status-missing {
+        color: #dc2626;
+      }
+      .host-data-status-unexpected {
+        color: #fbbf24;
+      }
+      .theme-light .host-data-status-unexpected {
+        color: #d97706;
+      }
+      .host-data-row.is-missing {
+        opacity: 0.5;
+      }
+      .host-data-row.is-missing .host-data-key {
+        text-decoration: line-through;
+        text-decoration-color: #f87171;
+        transition: text-decoration-color 0.15s ease;
+      }
+      /* Fade strikethrough when highlighted via badge hover */
+      .host-data-list.has-hover .host-data-row.is-missing.is-highlighted .host-data-key {
+        text-decoration-color: rgba(248, 113, 113, 0.3);
+      }
+      .theme-light .host-data-list.has-hover .host-data-row.is-missing.is-highlighted .host-data-key {
+        text-decoration-color: rgba(220, 38, 38, 0.3);
+      }
+      .host-data-value.is-missing-value {
+        color: #6b7280;
+        font-style: italic;
+      }
+      .theme-light .host-data-value.is-missing-value {
+        color: #9ca3af;
+      }
+      /* Validation summary badge styles */
+      .host-data-wrapper {
+        position: relative;
+      }
+      .validation-summary {
+        position: absolute;
+        top: 0;
+        right: 0;
+        display: flex;
+        gap: 0.5rem;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.75rem;
+      }
+      .validation-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .theme-light .validation-badge {
+        background: rgba(0, 0, 0, 0.05);
+      }
+      .validation-badge.is-missing {
+        color: #f87171;
+      }
+      .theme-light .validation-badge.is-missing {
+        color: #dc2626;
+      }
+      .validation-badge.is-unexpected {
+        color: #fbbf24;
+      }
+      .theme-light .validation-badge.is-unexpected {
+        color: #d97706;
+      }
+      .validation-badge.is-valid {
+        color: #4ade80;
+      }
+      .theme-light .validation-badge.is-valid {
+        color: #16a34a;
+      }
+      .validation-badge-count {
+        font-weight: 600;
+      }
+      .validation-badge {
+        cursor: pointer;
+      }
+      .validation-badge:hover {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
       .host-data-collapsed {
         display: inline-flex;
         align-items: center;
@@ -564,6 +659,129 @@
           toolResult: null,
           toolCancelled: null
         };
+
+        // HostContext schema definition for validation
+        // Based on the MCP Apps specification
+        const hostContextSchema = {
+          'hostContext': { type: 'object', children: {
+            'toolInfo': { type: 'object', children: {
+              'id': { type: ['string', 'number'] },
+              'tool': { type: 'object', children: {
+                'name': { type: 'string' },
+                'description': { type: 'string' },
+                'inputSchema': { type: 'object' }
+              }}
+            }},
+            'theme': { type: 'string', enum: ['light', 'dark'] },
+            'styles': { type: 'object', children: {
+              'variables': { type: 'object' },
+              'css': { type: 'object', children: {
+                'fonts': { type: 'string' }
+              }}
+            }},
+            'displayMode': { type: 'string', enum: ['inline', 'fullscreen', 'pip'] },
+            'availableDisplayModes': { type: 'array' },
+            'containerDimensions': { type: 'object', children: {
+              'height': { type: 'number' },
+              'maxHeight': { type: 'number' },
+              'width': { type: 'number' },
+              'maxWidth': { type: 'number' }
+            }},
+            'locale': { type: 'string' },
+            'timeZone': { type: 'string' },
+            'userAgent': { type: 'string' },
+            'platform': { type: 'string', enum: ['web', 'desktop', 'mobile'] },
+            'deviceCapabilities': { type: 'object', children: {
+              'touch': { type: 'boolean' },
+              'hover': { type: 'boolean' }
+            }},
+            'safeAreaInsets': { type: 'object', children: {
+              'top': { type: 'number' },
+              'right': { type: 'number' },
+              'bottom': { type: 'number' },
+              'left': { type: 'number' }
+            }}
+          }}
+        };
+
+        // Validate host context against schema
+        function validateHostContext(data) {
+          const result = {
+            missing: [],      // Expected fields that are missing
+            unexpected: [],   // Fields that exist but aren't in schema
+            valid: []         // Fields that match schema
+          };
+          
+          function validate(obj, schema, path) {
+            if (!obj || typeof obj !== 'object') return;
+            
+            // Check for expected fields
+            for (const key in schema) {
+              const fullPath = path ? path + '.' + key : key;
+              const schemaEntry = schema[key];
+              
+              if (!(key in obj) || obj[key] === undefined || obj[key] === null) {
+                result.missing.push(fullPath);
+              } else {
+                result.valid.push(fullPath);
+                // Recurse into children if defined
+                if (schemaEntry.children && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+                  validate(obj[key], schemaEntry.children, fullPath);
+                }
+              }
+            }
+            
+            // Check for unexpected fields
+            for (const key in obj) {
+              if (!obj.hasOwnProperty(key)) continue;
+              const fullPath = path ? path + '.' + key : key;
+              
+              if (!(key in schema)) {
+                result.unexpected.push(fullPath);
+                // Also mark all nested paths as unexpected
+                if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                  markAllAsUnexpected(obj[key], fullPath);
+                }
+              }
+            }
+          }
+          
+          function markAllAsUnexpected(obj, path) {
+            for (const key in obj) {
+              if (!obj.hasOwnProperty(key)) continue;
+              const fullPath = path + '.' + key;
+              result.unexpected.push(fullPath);
+              if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                markAllAsUnexpected(obj[key], fullPath);
+              }
+            }
+          }
+          
+          // Start validation at hostContext level
+          if (data && data.hostContext) {
+            validate({ hostContext: data.hostContext }, hostContextSchema, '');
+          }
+          
+          return result;
+        }
+
+        // Get validation status for a specific path
+        function getPathValidationStatus(path, validationResult) {
+          // Check if this exact path is missing or unexpected
+          if (validationResult.missing.indexOf(path) !== -1) {
+            return 'missing';
+          }
+          if (validationResult.unexpected.indexOf(path) !== -1) {
+            return 'unexpected';
+          }
+          // Check if any parent path makes this unexpected
+          for (let i = 0; i < validationResult.unexpected.length; i++) {
+            if (path.indexOf(validationResult.unexpected[i] + '.') === 0) {
+              return 'unexpected';
+            }
+          }
+          return 'valid';
+        }
 
         // Message log
         const messageLog = [];
@@ -915,8 +1133,45 @@
         }
 
         function setupHostDataHoverEffects() {
-          const list = document.querySelector('#host-info-content .host-data-list');
+          const container = document.getElementById('host-info-content');
+          if (!container) return;
+          
+          const list = container.querySelector('.host-data-list');
           setupDataListHoverEffects(list);
+          
+          // Setup validation badge hover effects
+          const validationSummary = container.querySelector('.validation-summary');
+          if (!validationSummary || !list) return;
+          
+          const rows = list.querySelectorAll('.host-data-row');
+          const badges = validationSummary.querySelectorAll('.validation-badge');
+          
+          badges.forEach(function(badge) {
+            const isMissingBadge = badge.classList.contains('is-missing');
+            const isUnexpectedBadge = badge.classList.contains('is-unexpected');
+            
+            badge.addEventListener('mouseenter', function() {
+              list.classList.add('has-hover');
+              
+              rows.forEach(function(row) {
+                const shouldHighlight = (isMissingBadge && row.classList.contains('is-missing')) ||
+                                        (isUnexpectedBadge && row.classList.contains('is-unexpected'));
+                
+                if (shouldHighlight) {
+                  row.classList.add('is-highlighted');
+                } else {
+                  row.classList.remove('is-highlighted');
+                }
+              });
+            });
+            
+            badge.addEventListener('mouseleave', function() {
+              list.classList.remove('has-hover');
+              rows.forEach(function(row) {
+                row.classList.remove('is-highlighted');
+              });
+            });
+          });
         }
 
         function setupToolDataHoverEffects() {
@@ -949,18 +1204,83 @@
             return;
           }
           
+          // Validate host context against schema
+          const validation = validateHostContext(currentHostInfo);
+          
           // Flatten the host info to dot notation rows (5 levels deep)
           let allRows = [];
           flattenObject(allRows, currentHostInfo, '', 4);
           
+          // Add missing fields from validation (only hostContext fields)
+          validation.missing.forEach(function(missingPath) {
+            if (missingPath.indexOf('hostContext.') === 0) {
+              // Check if we already have this path
+              const exists = allRows.some(function(r) { return r.key === missingPath; });
+              if (!exists) {
+                allRows.push({ key: missingPath, value: 'not provided', type: 'missing' });
+              }
+            }
+          });
+          
+          // Sort rows alphabetically by key for consistent display
+          allRows.sort(function(a, b) { return a.key.localeCompare(b.key); });
+          
+          // Build validation summary and content
+          const missingHostContext = validation.missing.filter(function(p) { return p.indexOf('hostContext.') === 0; });
+          const unexpectedHostContext = validation.unexpected.filter(function(p) { return p.indexOf('hostContext.') === 0; });
+          const hasValidationIssues = missingHostContext.length > 0 || unexpectedHostContext.length > 0;
+          
+          // Start with wrapper div for positioning context
+          let html = '<div class="host-data-wrapper">';
+          
+          // Add validation summary badges (positioned top-right via CSS)
+          if (hasValidationIssues) {
+            html += '<div class="validation-summary">';
+            if (missingHostContext.length > 0) {
+              html += '<span class="validation-badge is-missing" title="Expected fields not provided by host">';
+              html += '<span class="validation-badge-count">' + missingHostContext.length + '</span> missing';
+              html += '</span>';
+            }
+            if (unexpectedHostContext.length > 0) {
+              html += '<span class="validation-badge is-unexpected" title="Fields provided but not in HostContext spec">';
+              html += '<span class="validation-badge-count">' + unexpectedHostContext.length + '</span> unexpected';
+              html += '</span>';
+            }
+            html += '</div>';
+          }
+          
           // Render the rows with data-path attributes and segmented keys
-          let html = '<div class="host-data-list">';
+          html += '<div class="host-data-list' + (hasValidationIssues ? ' has-validation' : '') + '">';
           allRows.forEach(function(row, index) {
-            html += '<div class="host-data-row" data-path="' + escapeHtml(row.key) + '">';
+            const validationStatus = getPathValidationStatus(row.key, validation);
+            const statusClass = validationStatus !== 'valid' ? ' is-' + validationStatus : '';
+            
+            html += '<div class="host-data-row' + statusClass + '" data-path="' + escapeHtml(row.key) + '">';
+            
+            // Add status indicator column only when there are validation issues
+            if (hasValidationIssues) {
+              html += '<span class="host-data-status">';
+              if (validationStatus === 'missing') {
+                html += '<span class="host-data-status-missing">×</span>';
+              } else if (validationStatus === 'unexpected') {
+                html += '<span class="host-data-status-unexpected">*</span>';
+              }
+              html += '</span>';
+            }
+            
             html += renderKeyWithSegments(row.key);
-            html += '<span class="host-data-value-cell">' + renderHostDataValue(row, 'hd-' + index) + '</span>';
+            html += '<span class="host-data-value-cell">';
+            if (row.type === 'missing') {
+              html += '<span class="host-data-value is-missing-value">' + escapeHtml(row.value) + '</span>';
+            } else {
+              html += renderHostDataValue(row, 'hd-' + index);
+            }
+            html += '</span>';
             html += '</div>';
           });
+          html += '</div>';
+          
+          // Close wrapper div
           html += '</div>';
           
           container.innerHTML = html;
