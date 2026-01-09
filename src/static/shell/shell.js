@@ -600,30 +600,37 @@
 
   /**
    * Generate test cases from the hostContextSchema
-   * Returns an array of { path, expectedType, enumValues?, hasChildren, optional, unionGroups? }
+   * Only generates tests for leaf nodes (properties without children)
+   * Returns an array of { path, expectedType, enumValues?, optional, parentPath? }
    */
-  function generateTestCases(schema, prefix, parentExists) {
+  function generateTestCases(schema, prefix, parentOptional) {
     const tests = []
     prefix = prefix || ""
-    // Default to true for root level
-    if (parentExists === undefined) parentExists = true
+    parentOptional = parentOptional || false
 
     for (const key in schema) {
       const fullPath = prefix ? prefix + "." + key : key
       const entry = schema[key]
-
-      tests.push({
-        path: fullPath,
-        expectedType: entry.type,
-        enumValues: entry.enum || null,
-        hasChildren: !!entry.children,
-        optional: !!entry.optional,
-        unionGroups: entry.unionGroups || null,
-      })
+      // A property is effectively optional if it's marked optional OR any parent is optional
+      const isOptional = parentOptional || !!entry.optional
 
       if (entry.children) {
-        const childTests = generateTestCases(entry.children, fullPath, true)
+        // This is a parent node - recurse into children, don't add a test for this node
+        const childTests = generateTestCases(
+          entry.children,
+          fullPath,
+          isOptional
+        )
         tests.push.apply(tests, childTests)
+      } else {
+        // This is a leaf node - add a test
+        tests.push({
+          path: fullPath,
+          expectedType: entry.type,
+          enumValues: entry.enum || null,
+          optional: isOptional,
+          parentPath: prefix || null,
+        })
       }
     }
 
