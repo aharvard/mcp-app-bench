@@ -1724,11 +1724,9 @@
           let html = '<div class="font-family-grid">';
           
           for (const [varName, value] of vars) {
-            const isMono = varName === '--font-mono';
-            const label = isMono ? 'Monospace' : 'Sans-serif';
-            
+            // Use CSS custom property reference so browser resolves it
             html += '<div class="font-family-item">';
-            html += '<div class="font-family-preview" style="font-family: ' + value + ';">Lorem ipsum dolor sit amet</div>';
+            html += '<div class="font-family-preview" style="font-family: var(' + varName + ');">Lorem ipsum dolor sit amet</div>';
             html += '<div class="font-family-meta">';
             html += '<span class="type-scale-var">var(' + varName + ')</span>';
             html += '<span class="type-scale-value is-string">' + escapeHtml(value) + '</span>';
@@ -1742,20 +1740,16 @@
 
         // Render font weights preview section
         function renderFontWeights(vars, allVars) {
-          // Get the sans font family for preview
-          const sansFont = allVars['--font-sans'] || 'system-ui, sans-serif';
-          
           let html = '<div class="font-weight-grid">';
           
           for (const [varName, value] of vars) {
-            const weightName = varName.replace('--font-weight-', '');
-            
+            // Use CSS custom property references so browser resolves them
             html += '<div class="font-weight-item">';
             html += '<div class="font-weight-meta">';
             html += '<span class="type-scale-var">var(' + varName + ')</span>';
             html += '<span class="type-scale-value">' + escapeHtml(value) + '</span>';
             html += '</div>';
-            html += '<div class="font-weight-preview" style="font-family: ' + sansFont + '; font-weight: ' + value + ';">The quick brown fox jumps over the lazy dog</div>';
+            html += '<div class="font-weight-preview" style="font-family: var(--font-sans); font-weight: var(' + varName + ');">The quick brown fox jumps over the lazy dog</div>';
             html += '</div>';
           }
           
@@ -1781,8 +1775,8 @@
             }
           }
           
-          // Get font family
-          const fontFamily = allVars['--font-sans'] || 'system-ui, sans-serif';
+          // Get font family value for display (not for styling)
+          const fontFamilyValue = allVars['--font-sans'] || 'system-ui, sans-serif';
           
           // Define size order
           const sizeOrder = isHeading 
@@ -1795,11 +1789,13 @@
             const group = sizeGroups[sizeKey];
             if (!group || !group.size) continue;
             
-            const fontSize = group.size.value;
-            const lineHeight = group['line-height'] ? group['line-height'].value : '1.2';
-            
-            // Build inline style with proper escaping for font-family
-            const previewStyle = 'font-family: ' + fontFamily + '; font-size: ' + fontSize + '; line-height: ' + lineHeight + '; font-weight: ' + (isHeading ? '700' : '400') + ';';
+            // Build inline style using CSS custom property references
+            // This ensures the browser resolves the actual values from the applied stylesheet
+            let previewStyle = 'font-family: var(--font-sans); font-size: var(' + group.size.varName + ');';
+            if (group['line-height']) {
+              previewStyle += ' line-height: var(' + group['line-height'].varName + ');';
+            }
+            previewStyle += ' font-weight: ' + (isHeading ? '700' : '400') + ';';
             
             html += '<div class="type-scale-item">';
             html += '<div class="type-scale-preview" style="' + previewStyle + '">Lorem ipsum</div>';
@@ -1817,7 +1813,7 @@
             
             // Font family row
             html += '<span class="type-scale-var">var(--font-sans)</span>';
-            html += '<span class="type-scale-value is-string">' + escapeHtml(fontFamily) + '</span>';
+            html += '<span class="type-scale-value is-string">' + escapeHtml(fontFamilyValue) + '</span>';
             
             html += '</div>';
             html += '</div>';
