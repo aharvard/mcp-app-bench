@@ -667,35 +667,22 @@
 
   /**
    * Run a single test case against the host data
-   * Returns { status: 'pass'|'fail'|'warn'|'skip', message, actualValue, actualType }
+   * Returns { status: 'provided'|'missing'|'invalid'|'warn', message, actualValue, actualType }
+   *
+   * Status meanings:
+   * - 'provided': Property exists with correct type
+   * - 'missing': Property not provided by host
+   * - 'invalid': Property exists but has wrong type
+   * - 'warn': Property exists but value is unexpected (e.g., unknown enum)
    */
   function runTestCase(testCase, hostData) {
     const result = getValueByPath(hostData, testCase.path)
 
     // If property not found
     if (!result.found) {
-      // If optional, it's a skip (not a failure)
-      if (testCase.optional) {
-        return {
-          status: "skip",
-          message: "Optional, not provided",
-          actualValue: undefined,
-          actualType: "undefined",
-        }
-      }
-      // If parent doesn't exist and this is a nested required property, skip
-      // (the parent's test will show the failure)
-      if (!parentPathExists(hostData, testCase.path)) {
-        return {
-          status: "skip",
-          message: "Parent not provided",
-          actualValue: undefined,
-          actualType: "undefined",
-        }
-      }
       return {
-        status: "fail",
-        message: "Required property not provided",
+        status: "missing",
+        message: "Not provided",
         actualValue: undefined,
         actualType: "undefined",
       }
@@ -713,7 +700,7 @@
 
     if (!typeMatches) {
       return {
-        status: "fail",
+        status: "invalid",
         message:
           "Expected " + expectedTypes.join(" | ") + ", got " + actualType,
         actualValue: value,
@@ -728,7 +715,7 @@
         message:
           'Value "' +
           value +
-          '" not in expected: [' +
+          '" not in spec: [' +
           testCase.enumValues.join(", ") +
           "]",
         actualValue: value,
@@ -737,11 +724,22 @@
     }
 
     return {
-      status: "pass",
+      status: "provided",
       message: "OK",
       actualValue: value,
       actualType: actualType,
     }
+  }
+
+  /**
+   * Calculate a letter grade from a percentage
+   */
+  function getGrade(percentage) {
+    if (percentage >= 90) return { letter: "A", color: "pass" }
+    if (percentage >= 80) return { letter: "B", color: "pass" }
+    if (percentage >= 70) return { letter: "C", color: "warn" }
+    if (percentage >= 60) return { letter: "D", color: "warn" }
+    return { letter: "F", color: "fail" }
   }
 
   /**
@@ -1212,6 +1210,7 @@
     runTestCase: runTestCase,
     findUnexpectedProperties: findUnexpectedProperties,
     formatTestValue: formatTestValue,
+    getGrade: getGrade,
 
     // Styles
     injectStyleVariables: injectStyleVariables,
