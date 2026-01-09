@@ -259,6 +259,92 @@
         color: var(--text-secondary);
         word-break: break-all;
       }
+      /* Typography preview styles */
+      .type-scale-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .type-scale-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .type-scale-preview {
+        color: var(--text-primary);
+        line-height: 1;
+      }
+      .type-scale-meta {
+        display: grid;
+        grid-template-columns: 42ch 1fr;
+        gap: 0 1.5rem;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.8125rem;
+        line-height: 1.6;
+      }
+      .type-scale-var {
+        color: var(--text-primary);
+      }
+      .type-scale-value {
+        color: #fcd34d;
+      }
+      .theme-light .type-scale-value {
+        color: #ca8a04;
+      }
+      .type-scale-value.is-string {
+        color: #86efac;
+      }
+      .theme-light .type-scale-value.is-string {
+        color: #16a34a;
+      }
+      /* Font family preview */
+      .font-family-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .font-family-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .font-family-preview {
+        font-size: 1.5rem;
+        color: var(--text-primary);
+        line-height: 1.2;
+      }
+      .font-family-meta {
+        display: grid;
+        grid-template-columns: 42ch 1fr;
+        gap: 0 1.5rem;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.8125rem;
+        line-height: 1.6;
+      }
+      /* Font weight preview */
+      .font-weight-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .font-weight-item {
+        display: grid;
+        grid-template-columns: 42ch 1fr;
+        gap: 0 1.5rem;
+        align-items: baseline;
+      }
+      .font-weight-meta {
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.8125rem;
+        line-height: 1.6;
+        display: flex;
+        flex-direction: column;
+      }
+      .font-weight-preview {
+        font-size: 1.125rem;
+        color: var(--text-primary);
+        line-height: 1.4;
+      }
       .styles-category {
         margin-bottom: 1.5rem;
       }
@@ -1563,7 +1649,10 @@
             'Text Colors': [],
             'Border Colors': [],
             'Ring Colors': [],
-            'Typography': [],
+            'Font Families': [],
+            'Font Weights': [],
+            'Heading Sizes': [],
+            'Text Sizes': [],
             'Border Radius': [],
             'Shadows': [],
             'Other': []
@@ -1578,8 +1667,14 @@
               categories['Border Colors'].push([key, value]);
             } else if (key.startsWith('--color-ring-')) {
               categories['Ring Colors'].push([key, value]);
-            } else if (key.startsWith('--font-') || key.startsWith('--font-weight-')) {
-              categories['Typography'].push([key, value]);
+            } else if (key === '--font-sans' || key === '--font-mono') {
+              categories['Font Families'].push([key, value]);
+            } else if (key.startsWith('--font-weight-')) {
+              categories['Font Weights'].push([key, value]);
+            } else if (key.startsWith('--font-heading-')) {
+              categories['Heading Sizes'].push([key, value]);
+            } else if (key.startsWith('--font-text-')) {
+              categories['Text Sizes'].push([key, value]);
             } else if (key.startsWith('--border-radius-') || key.startsWith('--border-width-')) {
               categories['Border Radius'].push([key, value]);
             } else if (key.startsWith('--shadow-')) {
@@ -1625,6 +1720,111 @@
           return html;
         }
 
+        // Render font family preview section
+        function renderFontFamilies(vars, allVars) {
+          let html = '<div class="font-family-grid">';
+          
+          for (const [varName, value] of vars) {
+            const isMono = varName === '--font-mono';
+            const label = isMono ? 'Monospace' : 'Sans-serif';
+            
+            html += '<div class="font-family-item">';
+            html += '<div class="font-family-preview" style="font-family: ' + value + ';">Lorem ipsum dolor sit amet</div>';
+            html += '<div class="font-family-meta">';
+            html += '<span class="type-scale-var">var(' + varName + ')</span>';
+            html += '<span class="type-scale-value is-string">' + escapeHtml(value) + '</span>';
+            html += '</div>';
+            html += '</div>';
+          }
+          
+          html += '</div>';
+          return html;
+        }
+
+        // Render font weights preview section
+        function renderFontWeights(vars, allVars) {
+          // Get the sans font family for preview
+          const sansFont = allVars['--font-sans'] || 'system-ui, sans-serif';
+          
+          let html = '<div class="font-weight-grid">';
+          
+          for (const [varName, value] of vars) {
+            const weightName = varName.replace('--font-weight-', '');
+            
+            html += '<div class="font-weight-item">';
+            html += '<div class="font-weight-meta">';
+            html += '<span class="type-scale-var">var(' + varName + ')</span>';
+            html += '<span class="type-scale-value">' + escapeHtml(value) + '</span>';
+            html += '</div>';
+            html += '<div class="font-weight-preview" style="font-family: ' + sansFont + '; font-weight: ' + value + ';">The quick brown fox jumps over the lazy dog</div>';
+            html += '</div>';
+          }
+          
+          html += '</div>';
+          return html;
+        }
+
+        // Render type scale preview (headings or text sizes)
+        function renderTypeScale(vars, allVars, isHeading) {
+          // Group by size (e.g., xs, sm, md, lg)
+          const sizeGroups = {};
+          
+          for (const [varName, value] of vars) {
+            // Extract size key (e.g., "xs", "sm", "md", "lg", "xl", "2xl", "3xl")
+            const match = varName.match(isHeading ? /--font-heading-(\w+)-(size|line-height)/ : /--font-text-(\w+)-(size|line-height)/);
+            if (match) {
+              const sizeKey = match[1];
+              const propType = match[2];
+              if (!sizeGroups[sizeKey]) {
+                sizeGroups[sizeKey] = {};
+              }
+              sizeGroups[sizeKey][propType] = { varName, value };
+            }
+          }
+          
+          // Get font family
+          const fontFamily = allVars['--font-sans'] || 'system-ui, sans-serif';
+          
+          // Define size order
+          const sizeOrder = isHeading 
+            ? ['3xl', '2xl', 'xl', 'lg', 'md', 'sm', 'xs']
+            : ['lg', 'md', 'sm', 'xs'];
+          
+          let html = '<div class="type-scale-grid">';
+          
+          for (const sizeKey of sizeOrder) {
+            const group = sizeGroups[sizeKey];
+            if (!group || !group.size) continue;
+            
+            const fontSize = group.size.value;
+            const lineHeight = group['line-height'] ? group['line-height'].value : '1.2';
+            
+            html += '<div class="type-scale-item">';
+            html += '<div class="type-scale-preview" style="font-family: ' + fontFamily + '; font-size: ' + fontSize + '; line-height: ' + lineHeight + '; font-weight: ' + (isHeading ? '700' : '400') + ';">Lorem ipsum</div>';
+            html += '<div class="type-scale-meta">';
+            
+            // Size row
+            html += '<span class="type-scale-var">var(' + group.size.varName + ')</span>';
+            html += '<span class="type-scale-value">' + escapeHtml(group.size.value) + '</span>';
+            
+            // Line height row
+            if (group['line-height']) {
+              html += '<span class="type-scale-var">var(' + group['line-height'].varName + ')</span>';
+              html += '<span class="type-scale-value">' + escapeHtml(group['line-height'].value) + '</span>';
+            }
+            
+            // Font family row
+            html += '<span class="type-scale-var">var(--font-sans)</span>';
+            html += '<span class="type-scale-value is-string">' + escapeHtml(fontFamily) + '</span>';
+            
+            html += '</div>';
+            html += '</div>';
+          }
+          
+          html += '</div>';
+          return html;
+        }
+
         function renderHostStyles(styles) {
           const container = document.getElementById('host-styles-content');
           if (!container) 
@@ -1637,6 +1837,7 @@
           }
 
           const categories = categorizeStyleVariables(styles.variables);
+          const allVars = styles.variables;
           let html = '';
 
           for (const [category, vars] of Object.entries(categories)) {
@@ -1656,8 +1857,16 @@
                 html += renderColorSwatchCard(varName, value);
               }
               html += '</div>';
+            } else if (category === 'Font Families') {
+              html += renderFontFamilies(vars, allVars);
+            } else if (category === 'Font Weights') {
+              html += renderFontWeights(vars, allVars);
+            } else if (category === 'Heading Sizes') {
+              html += renderTypeScale(vars, allVars, true);
+            } else if (category === 'Text Sizes') {
+              html += renderTypeScale(vars, allVars, false);
             } else {
-              // Use table for non-color values
+              // Use table for other values
               html += '<table class="styles-table"><tbody>';
               for (const [varName, value] of vars) {
                 const displayName = varName.replace(/^--/, '');
