@@ -216,6 +216,49 @@
         flex-shrink: 0;
         box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
       }
+      /* New color swatch card styles */
+      .color-swatches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+      }
+      .color-swatch-card {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+      .color-swatch-preview {
+        width: 100px;
+        height: 80px;
+        border-radius: 6px;
+        overflow: hidden;
+        display: flex;
+        flex-shrink: 0;
+        border: 1px solid var(--border);
+      }
+      .color-swatch-half {
+        flex: 1;
+        height: 100%;
+      }
+      .color-swatch-info {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.25rem;
+        min-width: 0;
+      }
+      .color-swatch-var {
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.8125rem;
+        color: var(--text-primary);
+        word-break: break-all;
+      }
+      .color-swatch-value {
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        word-break: break-all;
+      }
       .styles-category {
         margin-bottom: 1.5rem;
       }
@@ -229,7 +272,7 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: var(--text-secondary);
-        margin: 0 0 0.5rem;
+        margin: 0 0 0.75rem;
         padding: 0.25rem 0;
         border-bottom: 1px solid var(--border);
       }
@@ -1550,6 +1593,39 @@
           return categories;
         }
 
+        // Parse light-dark() CSS function to extract light and dark colors
+        function parseLightDark(value) {
+          const match = value.match(/^light-dark\(\s*([^,]+)\s*,\s*([^)]+)\s*\)$/);
+          if (match) {
+            return { light: match[1].trim(), dark: match[2].trim() };
+          }
+          return null;
+        }
+
+        // Render a color swatch card with light/dark preview
+        function renderColorSwatchCard(varName, value) {
+          const lightDark = parseLightDark(value);
+          let html = '<div class="color-swatch-card">';
+          html += '<div class="color-swatch-preview">';
+          
+          if (lightDark) {
+            // Show light color on left, dark color on right
+            html += '<div class="color-swatch-half" style="background: ' + lightDark.light + ';"></div>';
+            html += '<div class="color-swatch-half" style="background: ' + lightDark.dark + ';"></div>';
+          } else {
+            // Single color - show full width
+            html += '<div class="color-swatch-half" style="background: ' + value + '; flex: 1;"></div>';
+          }
+          
+          html += '</div>';
+          html += '<div class="color-swatch-info">';
+          html += '<div class="color-swatch-var">var(' + varName + ')</div>';
+          html += '<div class="color-swatch-value">' + escapeHtml(value) + '</div>';
+          html += '</div>';
+          html += '</div>';
+          return html;
+        }
+
         function renderHostStyles(styles) {
           const container = document.getElementById('host-styles-content');
           if (!container) 
@@ -1568,32 +1644,32 @@
             if (vars.length === 0) 
               continue;
             
+            // Check if this category contains colors
+            const isColorCategory = category.includes('Colors');
+            
             html += '<div class="styles-category">';
             html += '<h3 class="styles-category-title">' + category + '</h3>';
-            html += '<table class="styles-table"><tbody>';
-
-            for (const [varName, value] of vars) {
-              const displayName = varName.replace(/^--/, '');
-              const isColor = isColorValue(value);
-
-              html += '<tr>';
-              html += '<td class="var-name">' + displayName + '</td>';
-              html += '<td class="var-value">';
-
-              if (isColor) {
-                html += '<span class="color-swatch">';
-                html += '<span class="color-swatch-box" style="background: ' + value + ';"></span>';
-                html += '<span>' + value + '</span>';
-                html += '</span>';
-              } else {
-                html += value;
+            
+            if (isColorCategory) {
+              // Use new swatch card grid for colors
+              html += '<div class="color-swatches-grid">';
+              for (const [varName, value] of vars) {
+                html += renderColorSwatchCard(varName, value);
               }
-
-              html += '</td>';
-              html += '</tr>';
+              html += '</div>';
+            } else {
+              // Use table for non-color values
+              html += '<table class="styles-table"><tbody>';
+              for (const [varName, value] of vars) {
+                const displayName = varName.replace(/^--/, '');
+                html += '<tr>';
+                html += '<td class="var-name">' + displayName + '</td>';
+                html += '<td class="var-value">' + escapeHtml(value) + '</td>';
+                html += '</tr>';
+              }
+              html += '</tbody></table>';
             }
-
-            html += '</tbody></table>';
+            
             html += '</div>';
           }
 
@@ -1601,7 +1677,7 @@
           if (styles.css && styles.css.fonts) {
             html += '<div class="styles-category">';
             html += '<h3 class="styles-category-title">Custom Fonts CSS</h3>';
-            html += '<pre style="font-family: "Victor Mono", ui-monospace, monospace; font-size: 0.7rem; color: var(--text-secondary); white-space: pre-wrap; margin: 0; max-height: 150px; overflow-y: auto;">';
+            html += '<pre style="font-family: \'Victor Mono\', ui-monospace, monospace; font-size: 0.7rem; color: var(--text-secondary); white-space: pre-wrap; margin: 0; max-height: 150px; overflow-y: auto;">';
             html += styles
               .css
               .fonts
@@ -1639,7 +1715,7 @@
             const hostDisplay = version
               ? name + ' v' + version
               : name;
-            subtitle.textContent = 'mcp host: ' + hostDisplay;
+            subtitle.textContent = 'Current host under inspection: ' + hostDisplay;
           }
 
           currentHostInfo = {
