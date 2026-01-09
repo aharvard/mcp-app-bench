@@ -460,6 +460,13 @@
       .theme-light .host-data-value.is-null {
         color: #dc2626;
       }
+      .host-data-value.is-reference {
+        color: #6b7280;
+        font-style: italic;
+      }
+      .theme-light .host-data-value.is-reference {
+        color: #9ca3af;
+      }
       .host-data-collapsed {
         display: inline-flex;
         align-items: center;
@@ -503,7 +510,7 @@
       <div class="terminal-grid">
         <div class="terminal-section">
           <h2>Tool Data</h2>
-          <div class="json-viewer" id="tool-data-content">Waiting...</div>
+          <div id="tool-data-content">Waiting...</div>
         </div>
         <div class="terminal-section">
           <h2>Host Data</h2>
@@ -834,6 +841,12 @@
             const value = obj[key];
             const fullKey = prefix ? prefix + '.' + key : key;
             
+            // Special case: replace hostContext.styles.variables with a reference
+            if (fullKey === 'hostContext.styles.variables') {
+              allRows.push({ key: fullKey, value: 'refer to Host Styles section', type: 'reference' });
+              continue;
+            }
+            
             // If we haven't reached max depth and value is a plain object (not array), recurse
             if (currentDepth < maxDepth && typeof value === 'object' && value !== null && !Array.isArray(value)) {
               flattenObject(allRows, value, fullKey, maxDepth, currentDepth + 1);
@@ -843,14 +856,14 @@
           }
         }
 
-        function setupHostDataHoverEffects() {
-          const list = document.querySelector('.host-data-list');
+        function setupDataListHoverEffects(list) {
           if (!list) return;
 
           const rows = list.querySelectorAll('.host-data-row');
           const segments = list.querySelectorAll('.host-data-key-segment');
+          const valueCells = list.querySelectorAll('.host-data-value-cell');
           
-          // Handle hover on individual path segments
+          // Handle hover on individual path segments (highlights segment + descendants)
           segments.forEach(function(segment) {
             segment.addEventListener('mouseenter', function(e) {
               e.stopPropagation();
@@ -874,12 +887,41 @@
             });
           });
           
+          // Handle hover on value cells (highlights just that row)
+          valueCells.forEach(function(valueCell) {
+            valueCell.addEventListener('mouseenter', function(e) {
+              e.stopPropagation();
+              const row = valueCell.closest('.host-data-row');
+              if (!row) return;
+              
+              list.classList.add('has-hover');
+              
+              rows.forEach(function(r) {
+                if (r === row) {
+                  r.classList.add('is-highlighted');
+                } else {
+                  r.classList.remove('is-highlighted');
+                }
+              });
+            });
+          });
+          
           list.addEventListener('mouseleave', function() {
             list.classList.remove('has-hover');
             rows.forEach(function(r) {
               r.classList.remove('is-highlighted');
             });
           });
+        }
+
+        function setupHostDataHoverEffects() {
+          const list = document.querySelector('#host-info-content .host-data-list');
+          setupDataListHoverEffects(list);
+        }
+
+        function setupToolDataHoverEffects() {
+          const list = document.querySelector('#tool-data-content .host-data-list');
+          setupDataListHoverEffects(list);
         }
 
         function renderKeyWithSegments(key) {
@@ -930,7 +972,31 @@
         }
 
         function renderToolData() {
-          renderCollapsibleJson('tool-data-content', currentToolData, 3);
+          const container = document.getElementById('tool-data-content');
+          if (!container || !currentToolData) {
+            if (container) container.innerHTML = 'No tool data available';
+            return;
+          }
+          
+          // Flatten the tool data to dot notation rows (5 levels deep)
+          let allRows = [];
+          flattenObject(allRows, currentToolData, '', 4);
+          
+          // Render the rows with data-path attributes and segmented keys
+          let html = '<div class="host-data-list">';
+          allRows.forEach(function(row, index) {
+            html += '<div class="host-data-row" data-path="' + escapeHtml(row.key) + '">';
+            html += renderKeyWithSegments(row.key);
+            html += '<span class="host-data-value-cell">' + renderHostDataValue(row, 'td-' + index) + '</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+          
+          container.innerHTML = html;
+          
+          // Setup hover effects after rendering
+          setupToolDataHoverEffects();
+          
           sendSizeChanged();
         }
 
