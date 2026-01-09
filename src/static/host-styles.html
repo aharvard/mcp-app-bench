@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css">
+    <style>
+      /* Host Styles specific styles */
+    </style>
+  </head>
+  <body>
+    <h1>Host Styles Inspector</h1>
+    <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+    
+    <div class="terminal">
+      <div class="terminal-grid">
+        <div class="terminal-section">
+          <h2>Host Styles</h2>
+          <div class="styles-scroll" id="host-styles-content">
+            <div class="styles-empty">Waiting for host styles...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{BASE_URL}}/shell/shell.js"></script>
+    <script>
+      (function () {
+        function renderColorSwatchCard(varName, value) {
+          const lightDark = MCPAppShell.parseLightDark(value);
+          let html = '<div class="color-swatch-card">';
+          html += '<div class="color-swatch-preview">';
+          
+          if (lightDark) {
+            html += '<div class="color-swatch-half" style="background: ' + lightDark.light + ';"></div>';
+            html += '<div class="color-swatch-half" style="background: ' + lightDark.dark + ';"></div>';
+          } else {
+            html += '<div class="color-swatch-half" style="background: ' + value + '; flex: 1;"></div>';
+          }
+          
+          html += '</div>';
+          html += '<div class="color-swatch-info">';
+          html += '<div class="color-swatch-var">var(' + varName + ')</div>';
+          html += '<div class="color-swatch-value">' + MCPAppShell.escapeHtml(value) + '</div>';
+          html += '</div>';
+          html += '</div>';
+          return html;
+        }
+
+        function renderFontFamilies(vars, allVars) {
+          let html = '<div class="font-family-grid">';
+          
+          for (const [varName, value] of vars) {
+            html += '<div class="font-family-item">';
+            html += '<div class="font-family-preview" style="font-family: var(' + varName + ');">Lorem ipsum dolor sit amet</div>';
+            html += '<div class="font-family-meta">';
+            html += '<span class="type-scale-var">var(' + varName + ')</span>';
+            html += '<span class="type-scale-value is-string">' + MCPAppShell.escapeHtml(value) + '</span>';
+            html += '</div>';
+            html += '</div>';
+          }
+          
+          html += '</div>';
+          return html;
+        }
+
+        function renderFontWeights(vars, allVars) {
+          let html = '<div class="font-weight-grid">';
+          
+          for (const [varName, value] of vars) {
+            html += '<div class="font-weight-item">';
+            html += '<div class="font-weight-meta">';
+            html += '<span class="type-scale-var">var(' + varName + ')</span>';
+            html += '<span class="type-scale-value">' + MCPAppShell.escapeHtml(value) + '</span>';
+            html += '</div>';
+            html += '<div class="font-weight-preview" style="font-family: var(--font-sans); font-weight: var(' + varName + ');">The quick brown fox jumps over the lazy dog</div>';
+            html += '</div>';
+          }
+          
+          html += '</div>';
+          return html;
+        }
+
+        function renderTypeScale(vars, allVars, isHeading) {
+          const sizeGroups = {};
+          
+          for (const [varName, value] of vars) {
+            const match = varName.match(isHeading ? /--font-heading-([a-z0-9]+)-(size|line-height)/ : /--font-text-([a-z0-9]+)-(size|line-height)/);
+            if (match) {
+              const sizeKey = match[1];
+              const propType = match[2];
+              if (!sizeGroups[sizeKey]) {
+                sizeGroups[sizeKey] = {};
+              }
+              sizeGroups[sizeKey][propType] = { varName, value };
+            }
+          }
+          
+          const fontFamilyValue = allVars['--font-sans'] || 'system-ui, sans-serif';
+          const sizeOrder = isHeading 
+            ? ['3xl', '2xl', 'xl', 'lg', 'md', 'sm', 'xs']
+            : ['lg', 'md', 'sm', 'xs'];
+          
+          let html = '<div class="type-scale-grid">';
+          
+          for (const sizeKey of sizeOrder) {
+            const group = sizeGroups[sizeKey];
+            if (!group || !group.size) continue;
+            
+            let previewStyle = 'font-family: var(--font-sans); font-size: var(' + group.size.varName + ');';
+            if (group['line-height']) {
+              previewStyle += ' line-height: var(' + group['line-height'].varName + ');';
+            }
+            previewStyle += ' font-weight: ' + (isHeading ? '700' : '400') + ';';
+            
+            html += '<div class="type-scale-item">';
+            html += '<div class="type-scale-preview" style="' + previewStyle + '">Lorem ipsum</div>';
+            html += '<div class="type-scale-meta">';
+            
+            html += '<span class="type-scale-var">var(' + group.size.varName + ')</span>';
+            html += '<span class="type-scale-value">' + MCPAppShell.escapeHtml(group.size.value) + '</span>';
+            
+            if (group['line-height']) {
+              html += '<span class="type-scale-var">var(' + group['line-height'].varName + ')</span>';
+              html += '<span class="type-scale-value">' + MCPAppShell.escapeHtml(group['line-height'].value) + '</span>';
+            }
+            
+            html += '<span class="type-scale-var">var(--font-sans)</span>';
+            html += '<span class="type-scale-value is-string">' + MCPAppShell.escapeHtml(fontFamilyValue) + '</span>';
+            
+            html += '</div>';
+            html += '</div>';
+          }
+          
+          html += '</div>';
+          return html;
+        }
+
+        function renderBorderRadius(vars) {
+          let html = '<div class="border-radius-grid">';
+          
+          for (const [varName, value] of vars) {
+            html += '<div class="border-radius-item">';
+            html += '<div class="border-radius-preview" style="border-radius: var(' + varName + ');"></div>';
+            html += '<div class="border-radius-meta">';
+            html += '<div class="border-radius-var">var(' + varName + ')</div>';
+            html += '<div class="border-radius-value">' + MCPAppShell.escapeHtml(value) + '</div>';
+            html += '</div>';
+            html += '</div>';
+          }
+          
+          html += '</div>';
+          return html;
+        }
+
+        function renderShadows(vars) {
+          let html = '<div class="shadow-grid">';
+          
+          for (const [varName, value] of vars) {
+            html += '<div class="shadow-item">';
+            html += '<div class="shadow-preview" style="box-shadow: var(' + varName + ');"></div>';
+            html += '<div class="shadow-meta">';
+            html += '<div class="shadow-var">var(' + varName + ')</div>';
+            html += '<div class="shadow-value">' + MCPAppShell.escapeHtml(value) + '</div>';
+            html += '</div>';
+            html += '</div>';
+          }
+          
+          html += '</div>';
+          return html;
+        }
+
+        function renderHostStyles(styles) {
+          const container = document.getElementById('host-styles-content');
+          if (!container) return;
+          
+          if (!styles || !styles.variables || Object.keys(styles.variables).length === 0) {
+            container.innerHTML = '<div class="styles-empty">No styles provided by host</div>';
+            MCPAppShell.sendSizeChanged();
+            return;
+          }
+          
+          // Inject variables as CSS custom properties
+          MCPAppShell.injectStyleVariables(styles.variables);
+
+          const categories = MCPAppShell.categorizeStyleVariables(styles.variables);
+          const allVars = styles.variables;
+          let html = '';
+
+          for (const [category, vars] of Object.entries(categories)) {
+            if (vars.length === 0) continue;
+            
+            const isColorCategory = category.includes('Colors');
+            
+            html += '<div class="styles-category">';
+            html += '<h3 class="styles-category-title">' + category + '</h3>';
+            
+            if (isColorCategory) {
+              html += '<div class="color-swatches-grid">';
+              for (const [varName, value] of vars) {
+                html += renderColorSwatchCard(varName, value);
+              }
+              html += '</div>';
+            } else if (category === 'Font Families') {
+              html += renderFontFamilies(vars, allVars);
+            } else if (category === 'Font Weights') {
+              html += renderFontWeights(vars, allVars);
+            } else if (category === 'Heading Styles') {
+              html += renderTypeScale(vars, allVars, true);
+            } else if (category === 'Text Styles') {
+              html += renderTypeScale(vars, allVars, false);
+            } else if (category === 'Border Radius') {
+              html += renderBorderRadius(vars);
+            } else if (category === 'Shadows') {
+              html += renderShadows(vars);
+            } else {
+              html += '<table class="styles-table"><tbody>';
+              for (const [varName, value] of vars) {
+                const displayName = varName.replace(/^--/, '');
+                html += '<tr>';
+                html += '<td class="var-name">' + displayName + '</td>';
+                html += '<td class="var-value">' + MCPAppShell.escapeHtml(value) + '</td>';
+                html += '</tr>';
+              }
+              html += '</tbody></table>';
+            }
+            
+            html += '</div>';
+          }
+
+          // Show fonts CSS if available
+          if (styles.css && styles.css.fonts) {
+            html += '<div class="styles-category">';
+            html += '<h3 class="styles-category-title">Custom Fonts CSS</h3>';
+            html += '<pre style="font-family: \'Victor Mono\', ui-monospace, monospace; font-size: 0.7rem; color: var(--text-secondary); white-space: pre-wrap; margin: 0;">';
+            html += styles.css.fonts.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            html += '</pre>';
+            html += '</div>';
+          }
+
+          container.innerHTML = html;
+          MCPAppShell.sendSizeChanged();
+        }
+
+        // Initialize
+        MCPAppShell.initialize({
+          clientName: 'Host Styles Inspector',
+          clientVersion: '1.0.0',
+          onInitialized: function (result) {
+            if (result.hostContext && result.hostContext.styles) {
+              renderHostStyles(result.hostContext.styles);
+            }
+          }
+        });
+
+        // Listen for host context changes
+        window.addEventListener('mcp-host-context-changed', function (e) {
+          const hostInfo = MCPAppShell.getHostInfo();
+          if (hostInfo && hostInfo.hostContext && hostInfo.hostContext.styles) {
+            renderHostStyles(hostInfo.hostContext.styles);
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

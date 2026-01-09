@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css">
+    <style>
+      /* Host Info specific styles */
+    </style>
+  </head>
+  <body>
+    <h1>Host Info Inspector</h1>
+    <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+    
+    <div class="terminal">
+      <div class="terminal-grid">
+        <div class="terminal-section">
+          <h2>Host Data</h2>
+          <div id="host-info-content">Initializing...</div>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{BASE_URL}}/shell/shell.js"></script>
+    <script>
+      (function () {
+        function renderHostInfo() {
+          const container = document.getElementById('host-info-content');
+          const hostInfo = MCPAppShell.getHostInfo();
+          
+          if (!container || !hostInfo) {
+            if (container) container.innerHTML = 'No host data available';
+            return;
+          }
+
+          // Validate host context against schema
+          const validation = MCPAppShell.validateHostContext(hostInfo);
+
+          // Flatten the host info to dot notation rows (5 levels deep)
+          // Skip styles.variables and styles.css.fonts (shown in styles inspector)
+          let allRows = [];
+          MCPAppShell.flattenObject(allRows, hostInfo, '', 4, 0, [
+            { path: 'hostContext.styles.variables', message: 'see Host Styles inspector' },
+            { path: 'hostContext.styles.css.fonts', message: 'see Host Styles inspector' }
+          ]);
+
+          // Add missing fields from validation (only hostContext fields)
+          validation.missing.forEach(function (missingPath) {
+            if (missingPath.indexOf('hostContext.') === 0) {
+              const exists = allRows.some(function (r) {
+                return r.key === missingPath;
+              });
+              if (!exists) {
+                allRows.push({ key: missingPath, value: 'not provided', type: 'missing' });
+              }
+            }
+          });
+
+          // Sort rows alphabetically by key
+          allRows.sort(function (a, b) {
+            return a.key.localeCompare(b.key);
+          });
+
+          // Build validation summary
+          const missingHostContext = validation.missing.filter(function (p) {
+            return p.indexOf('hostContext.') === 0;
+          });
+          const unexpectedHostContext = validation.unexpected.filter(function (p) {
+            return p.indexOf('hostContext.') === 0;
+          });
+          const hasValidationIssues = missingHostContext.length > 0 || unexpectedHostContext.length > 0;
+
+          // Build HTML
+          let html = '<div class="host-data-wrapper">';
+
+          // Validation summary badges
+          if (hasValidationIssues) {
+            html += '<div class="validation-summary">';
+            if (missingHostContext.length > 0) {
+              html += '<span class="validation-badge is-missing" title="Expected fields not provided by host" id="badge-missing">';
+              html += '! <span class="validation-badge-count">' + missingHostContext.length + '</span> missing';
+              html += '</span>';
+            }
+            if (unexpectedHostContext.length > 0) {
+              html += '<span class="validation-badge is-unexpected" title="Fields provided but not in HostContext spec" id="badge-unexpected">';
+              html += '* <span class="validation-badge-count">' + unexpectedHostContext.length + '</span> unexpected';
+              html += '</span>';
+            }
+            html += '</div>';
+          }
+
+          // Render rows
+          html += '<div class="host-data-list' + (hasValidationIssues ? ' has-validation' : '') + '">';
+          allRows.forEach(function (row, index) {
+            const validationStatus = MCPAppShell.getPathValidationStatus(row.key, validation);
+            const statusClass = validationStatus !== 'valid' ? ' is-' + validationStatus : '';
+
+            html += '<div class="host-data-row' + statusClass + '" data-path="' + MCPAppShell.escapeHtml(row.key) + '">';
+
+            // Status indicator
+            let statusHtml = '';
+            if (hasValidationIssues && validationStatus !== 'valid') {
+              if (validationStatus === 'missing') {
+                statusHtml = '<span class="host-data-status"><span class="host-data-status-missing">!</span></span>';
+              } else if (validationStatus === 'unexpected') {
+                statusHtml = '<span class="host-data-status"><span class="host-data-status-unexpected">*</span></span>';
+              }
+            }
+
+            html += MCPAppShell.renderKeyWithSegments(row.key, statusHtml);
+            html += '<span class="host-data-value-cell">';
+            if (row.type === 'missing') {
+              html += '<span class="host-data-value is-missing-value">' + MCPAppShell.escapeHtml(row.value) + '</span>';
+            } else {
+              html += MCPAppShell.renderHostDataValue(row, 'hd-' + index);
+            }
+            html += '</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+          html += '</div>';
+
+          container.innerHTML = html;
+
+          // Setup hover effects
+          const list = container.querySelector('.host-data-list');
+          MCPAppShell.setupDataListHoverEffects(list);
+
+          // Setup validation badge hover effects
+          setupValidationBadgeHover(container, list, validation);
+
+          MCPAppShell.sendSizeChanged();
+        }
+
+        function setupValidationBadgeHover(container, list, validation) {
+          if (!list) return;
+
+          const rows = list.querySelectorAll('.host-data-row');
+          const missingBadge = document.getElementById('badge-missing');
+          const unexpectedBadge = document.getElementById('badge-unexpected');
+
+          function setupBadge(badge, isMissing) {
+            if (!badge) return;
+
+            badge.addEventListener('mouseenter', function () {
+              list.classList.add('has-hover');
+              rows.forEach(function (row) {
+                const shouldHighlight = isMissing 
+                  ? row.classList.contains('is-missing')
+                  : row.classList.contains('is-unexpected');
+                if (shouldHighlight) {
+                  row.classList.add('is-highlighted');
+                } else {
+                  row.classList.remove('is-highlighted');
+                }
+              });
+            });
+
+            badge.addEventListener('mouseleave', function () {
+              list.classList.remove('has-hover');
+              rows.forEach(function (row) {
+                row.classList.remove('is-highlighted');
+              });
+            });
+          }
+
+          setupBadge(missingBadge, true);
+          setupBadge(unexpectedBadge, false);
+        }
+
+        // Initialize
+        MCPAppShell.initialize({
+          clientName: 'Host Info Inspector',
+          clientVersion: '1.0.0',
+          onInitialized: function (result) {
+            renderHostInfo();
+          }
+        });
+
+        // Listen for host context changes
+        window.addEventListener('mcp-host-context-changed', function () {
+          renderHostInfo();
+        });
+      })();
+    </script>
+  </body>
+</html>

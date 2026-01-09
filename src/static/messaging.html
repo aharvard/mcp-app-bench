@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css">
+    <style>
+      /* Messaging specific styles */
+    </style>
+  </head>
+  <body>
+    <h1>Messaging Inspector</h1>
+    <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+    
+    <div class="terminal">
+      <div class="terminal-grid">
+        <div class="terminal-section">
+          <h2>Messaging</h2>
+          <div class="messaging-layout">
+            <div class="messaging-buttons">
+              <div class="messaging-buttons-group">
+                <h3 class="messaging-buttons-heading">UI → Host</h3>
+                <div class="messaging-buttons-list">
+                  <button class="action-btn" id="btn-open-link">ui/open-link</button>
+                  <button class="action-btn" id="btn-message">ui/message</button>
+                  <button class="action-btn" id="btn-size-change">ui/notifications/size-changed</button>
+                  <button class="action-btn" id="btn-get-context">ui/get-context</button>
+                </div>
+              </div>
+              <div class="messaging-buttons-group">
+                <h3 class="messaging-buttons-heading">UI → Server</h3>
+                <div class="messaging-buttons-list">
+                  <button class="action-btn" id="btn-tools-call">tools/call</button>
+                  <button class="action-btn" id="btn-resources-read">resources/read</button>
+                  <button class="action-btn" id="btn-notifications-message">notifications/message</button>
+                  <button class="action-btn" id="btn-ping">ping</button>
+                </div>
+              </div>
+            </div>
+            <div class="messaging-log-container">
+              <h3 class="messaging-log-header">message log</h3>
+              <div class="message-log" id="message-log-content"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{BASE_URL}}/shell/shell.js"></script>
+    <script>
+      (function () {
+        function renderMessageLog() {
+          const container = document.getElementById('message-log-content');
+          if (!container) return;
+
+          const messageLog = MCPAppShell.getMessageLog();
+          
+          if (messageLog.length === 0) {
+            container.innerHTML = '<div class="message-empty">No messages yet</div>';
+            return;
+          }
+
+          let html = '';
+          // Render in reverse order (newest first)
+          for (let i = messageLog.length - 1; i >= 0; i--) {
+            const msg = messageLog[i];
+            const dirIcon = msg.direction === 'sent' ? '↑' : '↓';
+            const dirClass = msg.direction;
+
+            html += '<div class="message-row">';
+            html += '<span class="message-time">' + msg.time + '</span>';
+            html += '<span class="message-direction ' + dirClass + '" title="' + (msg.direction === 'sent' ? 'Sent to host' : 'Received from host') + '">' + dirIcon + '</span>';
+            html += '<div class="message-content">';
+            html += '<div class="message-method">' + MCPAppShell.escapeHtml(msg.method) + '</div>';
+            if (msg.content !== undefined && msg.content !== null) {
+              html += '<div class="message-body">';
+              html += '<div class="json-viewer">' + MCPAppShell.renderJsonValue(msg.content, 0, 2) + '</div>';
+              html += '</div>';
+            }
+            html += '</div>';
+            html += '</div>';
+          }
+
+          container.innerHTML = html;
+        }
+
+        // Initialize
+        MCPAppShell.initialize({
+          clientName: 'Messaging Inspector',
+          clientVersion: '1.0.0',
+          onInitialized: function (result) {
+            renderMessageLog();
+          }
+        });
+
+        // Listen for new messages
+        window.addEventListener('mcp-message-logged', function () {
+          renderMessageLog();
+        });
+
+        // Button handlers
+
+        // UI → Host: Open Link
+        document.getElementById('btn-open-link').addEventListener('click', function () {
+          MCPAppShell.sendRequest('ui/open-link', {
+            url: 'https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx'
+          }).then(function (result) {
+            console.log('[Messaging] ui/open-link response:', result);
+          }).catch(function (error) {
+            console.error('[Messaging] ui/open-link error:', error);
+          });
+        });
+
+        // UI → Host: Send Message
+        document.getElementById('btn-message').addEventListener('click', function () {
+          MCPAppShell.sendRequest('ui/message', {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: 'Hello from Messaging Inspector! This message was sent via ui/message.'
+            }
+          }).then(function (result) {
+            console.log('[Messaging] ui/message response:', result);
+          }).catch(function (error) {
+            console.error('[Messaging] ui/message error:', error);
+          });
+        });
+
+        // UI → Host: Size Change
+        document.getElementById('btn-size-change').addEventListener('click', function () {
+          MCPAppShell.sendSizeChanged();
+          console.log('[Messaging] ui/notifications/size-changed sent');
+        });
+
+        // UI → Host: Get Context
+        document.getElementById('btn-get-context').addEventListener('click', function () {
+          MCPAppShell.sendRequest('ui/get-context', {}).then(function (result) {
+            console.log('[Messaging] ui/get-context response:', result);
+          }).catch(function (error) {
+            console.error('[Messaging] ui/get-context error:', error);
+          });
+        });
+
+        // UI → Server: Call Tool
+        document.getElementById('btn-tools-call').addEventListener('click', function () {
+          MCPAppShell.sendRequest('tools/call', {
+            name: 'get-server-time',
+            arguments: {}
+          }).then(function (result) {
+            console.log('[Messaging] tools/call response:', result);
+          }).catch(function (error) {
+            console.error('[Messaging] tools/call error:', error);
+          });
+        });
+
+        // UI → Server: Read Resource
+        document.getElementById('btn-resources-read').addEventListener('click', function () {
+          MCPAppShell.sendRequest('resources/read', {
+            uri: 'resource://example/demo-resource'
+          }).then(function (result) {
+            console.log('[Messaging] resources/read response:', result);
+          }).catch(function (error) {
+            console.error('[Messaging] resources/read error:', error);
+          });
+        });
+
+        // UI → Server: Log Message
+        document.getElementById('btn-notifications-message').addEventListener('click', function () {
+          MCPAppShell.sendRequest('notifications/message', {
+            level: 'info',
+            data: 'This is a log message from the Messaging Inspector!',
+            logger: 'Messaging Inspector'
+          }).then(function (result) {
+            console.log('[Messaging] notifications/message response:', result);
+          }).catch(function (error) {
+            console.error('[Messaging] notifications/message error:', error);
+          });
+        });
+
+        // UI → Server: Ping
+        document.getElementById('btn-ping').addEventListener('click', function () {
+          MCPAppShell.sendRequest('ping', {}).then(function (result) {
+            console.log('[Messaging] ping response:', result);
+          }).catch(function (error) {
+            console.error('[Messaging] ping error:', error);
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

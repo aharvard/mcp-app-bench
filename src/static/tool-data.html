@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css">
+    <style>
+      /* Tool Data specific styles */
+    </style>
+  </head>
+  <body>
+    <h1>Tool Data Inspector</h1>
+    <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+    
+    <div class="terminal">
+      <div class="terminal-grid">
+        <div class="terminal-section">
+          <h2>Tool Data</h2>
+          <div id="tool-data-content">Waiting for tool events...</div>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{BASE_URL}}/shell/shell.js"></script>
+    <script>
+      (function () {
+        function renderToolData() {
+          const container = document.getElementById('tool-data-content');
+          const toolData = MCPAppShell.getToolData();
+          
+          if (!container) return;
+
+          // Check if we have any tool data
+          const hasData = toolData.toolInput || toolData.toolInputPartial || 
+                          toolData.toolResult || toolData.toolCancelled;
+
+          if (!hasData) {
+            container.innerHTML = '<div class="styles-empty">No tool events received yet. Tool lifecycle events (input, partial, result, cancelled) will appear here.</div>';
+            MCPAppShell.sendSizeChanged();
+            return;
+          }
+
+          // Flatten the tool data to dot notation rows (5 levels deep)
+          let allRows = [];
+          MCPAppShell.flattenObject(allRows, toolData, '', 4);
+
+          // Render the rows
+          let html = '<div class="host-data-list">';
+          allRows.forEach(function (row, index) {
+            html += '<div class="host-data-row" data-path="' + MCPAppShell.escapeHtml(row.key) + '">';
+            html += MCPAppShell.renderKeyWithSegments(row.key);
+            html += '<span class="host-data-value-cell">' + MCPAppShell.renderHostDataValue(row, 'td-' + index) + '</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+
+          container.innerHTML = html;
+
+          // Setup hover effects
+          const list = container.querySelector('.host-data-list');
+          MCPAppShell.setupDataListHoverEffects(list);
+
+          MCPAppShell.sendSizeChanged();
+        }
+
+        // Initialize
+        MCPAppShell.initialize({
+          clientName: 'Tool Data Inspector',
+          clientVersion: '1.0.0',
+          onInitialized: function (result) {
+            renderToolData();
+          }
+        });
+
+        // Listen for tool events
+        window.addEventListener('mcp-tool-input', function () {
+          renderToolData();
+        });
+
+        window.addEventListener('mcp-tool-input-partial', function () {
+          renderToolData();
+        });
+
+        window.addEventListener('mcp-tool-result', function () {
+          renderToolData();
+        });
+
+        window.addEventListener('mcp-tool-cancelled', function () {
+          renderToolData();
+        });
+      })();
+    </script>
+  </body>
+</html>
