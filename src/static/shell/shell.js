@@ -1188,10 +1188,12 @@
   function navigateToInspector(toolName) {
     sendRequest("ui/message", {
       role: "user",
-      content: {
-        type: "text",
-        text: "Run the " + toolName + " tool.",
-      },
+      content: [
+        {
+          type: "text",
+          text: "Run the " + toolName + " tool.",
+        },
+      ],
     })
       .then(function (result) {
         console.log("[Shell] Navigation message sent:", toolName)
