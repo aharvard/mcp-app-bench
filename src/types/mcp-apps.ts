@@ -10,7 +10,9 @@ import {
  * This file contains TypeScript interfaces and types for the MCP Apps extension
  * as defined in SEP-1865: Interactive User Interfaces for MCP.
  *
- * @see https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx
+ * Specification Version: 2026-01-26 (Stable)
+ *
+ * @see https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx
  */
 
 import type { z } from "zod"
@@ -37,15 +39,53 @@ export interface UIResourceCSP {
   connectDomains?: string[]
 
   /**
-   * Origins for static resources (images, scripts, stylesheets, fonts).
+   * Origins for static resources (images, scripts, stylesheets, fonts, media).
    *
    * - Empty or omitted = no external resources (secure default)
    * - Wildcard subdomains supported: `https://*.example.com`
-   * - Maps to CSP `img-src`, `script-src`, `style-src`, `font-src` directives
+   * - Maps to CSP `img-src`, `script-src`, `style-src`, `font-src`, `media-src` directives
    *
    * @example ["https://cdn.jsdelivr.net", "https://*.cloudflare.com"]
    */
   resourceDomains?: string[]
+
+  /**
+   * Origins for nested iframes.
+   *
+   * - Empty or omitted = no nested iframes allowed (`frame-src 'none'`)
+   * - Maps to CSP `frame-src` directive
+   *
+   * @example ["https://www.youtube.com", "https://player.vimeo.com"]
+   */
+  frameDomains?: string[]
+
+  /**
+   * Allowed base URIs for the document.
+   *
+   * - Empty or omitted = only same origin allowed (`base-uri 'self'`)
+   * - Maps to CSP `base-uri` directive
+   *
+   * @example ["https://cdn.example.com"]
+   */
+  baseUriDomains?: string[]
+}
+
+/**
+ * Sandbox permissions requested by the UI.
+ *
+ * Servers declare which browser capabilities their UI needs.
+ * Hosts MAY honor these by setting appropriate iframe `allow` attributes.
+ * Apps SHOULD NOT assume permissions are granted; use JS feature detection as fallback.
+ */
+export interface UIResourcePermissions {
+  /** Request camera access - Maps to Permission Policy `camera` feature */
+  camera?: Record<string, never>
+  /** Request microphone access - Maps to Permission Policy `microphone` feature */
+  microphone?: Record<string, never>
+  /** Request geolocation access - Maps to Permission Policy `geolocation` feature */
+  geolocation?: Record<string, never>
+  /** Request clipboard write access - Maps to Permission Policy `clipboard-write` feature */
+  clipboardWrite?: Record<string, never>
 }
 
 /**
@@ -62,25 +102,37 @@ export interface UIResourceMeta {
   csp?: UIResourceCSP
 
   /**
-   * Dedicated origin for widget.
+   * Sandbox permissions requested by the UI.
+   * Servers declare which browser capabilities their UI needs.
+   */
+  permissions?: UIResourcePermissions
+
+  /**
+   * Dedicated origin for view.
    *
-   * Optional domain for the widget's sandbox origin. Useful when widgets need
-   * dedicated origins for API key allowlists or cross-origin isolation.
+   * Optional domain for the view's sandbox origin. Useful when views need
+   * stable, dedicated origins for OAuth callbacks, CORS policies, or API key allowlists.
    *
-   * If omitted, Host uses default sandbox origin.
+   * **Host-dependent:** The format and validation rules for this field are
+   * determined by each host. Servers MUST consult host-specific documentation
+   * for the expected domain format.
    *
-   * @example "https://weather-widget.example.com"
+   * If omitted, Host uses default sandbox origin (typically per-conversation).
+   *
+   * @example "a904794854a047f6.claudemcpcontent.com"
+   * @example "www-example-com.oaiusercontent.com"
    */
   domain?: string
 
   /**
    * Visual boundary preference.
    *
-   * Boolean indicating the UI prefers a visible border. Useful for widgets
-   * that might blend with host background.
+   * Boolean controlling whether a visible border and background is provided by the host.
+   * Specifying an explicit value for this is recommended because hosts' defaults may vary.
    *
-   * - `true`: Request visible border (host decides styling)
-   * - `false` or omitted: No preference
+   * - `true`: Request visible border + background
+   * - `false`: Request no visible border + background
+   * - omitted: host decides border
    */
   prefersBorder?: boolean
 }
@@ -164,6 +216,33 @@ export interface UIResourceReadResponse {
   contents: UIResourceContent[]
 }
 
+// =============================================================================
+// Tool UI Metadata Types
+// =============================================================================
+
+/**
+ * Tool visibility options.
+ *
+ * - "model": Tool visible to and callable by the agent
+ * - "app": Tool callable by the app from this server only
+ */
+export type ToolVisibility = "model" | "app"
+
+/**
+ * UI metadata for tools.
+ */
+export interface McpUiToolMeta {
+  /** URI of UI resource for rendering tool results */
+  resourceUri?: `ui://${string}`
+
+  /**
+   * Who can access this tool. Default: ["model", "app"]
+   * - "model": Tool visible to and callable by the agent
+   * - "app": Tool callable by the app from this server only
+   */
+  visibility?: ToolVisibility[]
+}
+
 /**
  * Extended tool definition with UI metadata.
  */
@@ -173,7 +252,9 @@ export interface UITool {
   inputSchema: object
   outputSchema?: object
   _meta?: {
-    ui?: `ui://${string}`
+    ui?: McpUiToolMeta
+    /** @deprecated Use `ui.resourceUri` instead. Will be removed before GA. */
+    "ui/resourceUri"?: string
   }
 }
 
@@ -218,6 +299,120 @@ export interface ClientCapabilitiesWithMcpApps {
 }
 
 // =============================================================================
+// Style Variable Types
+// =============================================================================
+
+/**
+ * CSS variable keys available to Views for theming.
+ *
+ * These are the standardized variable names that hosts can provide
+ * for visual cohesion with the host environment.
+ */
+export type McpUiStyleVariableKey =
+  // Background colors
+  | "--color-background-primary"
+  | "--color-background-secondary"
+  | "--color-background-tertiary"
+  | "--color-background-inverse"
+  | "--color-background-ghost"
+  | "--color-background-info"
+  | "--color-background-danger"
+  | "--color-background-success"
+  | "--color-background-warning"
+  | "--color-background-disabled"
+  // Text colors
+  | "--color-text-primary"
+  | "--color-text-secondary"
+  | "--color-text-tertiary"
+  | "--color-text-inverse"
+  | "--color-text-info"
+  | "--color-text-danger"
+  | "--color-text-success"
+  | "--color-text-warning"
+  | "--color-text-disabled"
+  | "--color-text-ghost"
+  // Border colors
+  | "--color-border-primary"
+  | "--color-border-secondary"
+  | "--color-border-tertiary"
+  | "--color-border-inverse"
+  | "--color-border-ghost"
+  | "--color-border-info"
+  | "--color-border-danger"
+  | "--color-border-success"
+  | "--color-border-warning"
+  | "--color-border-disabled"
+  // Ring colors
+  | "--color-ring-primary"
+  | "--color-ring-secondary"
+  | "--color-ring-inverse"
+  | "--color-ring-info"
+  | "--color-ring-danger"
+  | "--color-ring-success"
+  | "--color-ring-warning"
+  // Typography - Family
+  | "--font-sans"
+  | "--font-mono"
+  // Typography - Weight
+  | "--font-weight-normal"
+  | "--font-weight-medium"
+  | "--font-weight-semibold"
+  | "--font-weight-bold"
+  // Typography - Text Size
+  | "--font-text-xs-size"
+  | "--font-text-sm-size"
+  | "--font-text-md-size"
+  | "--font-text-lg-size"
+  // Typography - Heading Size
+  | "--font-heading-xs-size"
+  | "--font-heading-sm-size"
+  | "--font-heading-md-size"
+  | "--font-heading-lg-size"
+  | "--font-heading-xl-size"
+  | "--font-heading-2xl-size"
+  | "--font-heading-3xl-size"
+  // Typography - Text Line Height
+  | "--font-text-xs-line-height"
+  | "--font-text-sm-line-height"
+  | "--font-text-md-line-height"
+  | "--font-text-lg-line-height"
+  // Typography - Heading Line Height
+  | "--font-heading-xs-line-height"
+  | "--font-heading-sm-line-height"
+  | "--font-heading-md-line-height"
+  | "--font-heading-lg-line-height"
+  | "--font-heading-xl-line-height"
+  | "--font-heading-2xl-line-height"
+  | "--font-heading-3xl-line-height"
+  // Border radius
+  | "--border-radius-xs"
+  | "--border-radius-sm"
+  | "--border-radius-md"
+  | "--border-radius-lg"
+  | "--border-radius-xl"
+  | "--border-radius-full"
+  // Border width
+  | "--border-width-regular"
+  // Shadows
+  | "--shadow-hairline"
+  | "--shadow-sm"
+  | "--shadow-md"
+  | "--shadow-lg"
+
+/**
+ * Style configuration for theming.
+ */
+export interface HostStyles {
+  /** CSS variables for theming */
+  variables?: Record<McpUiStyleVariableKey, string | undefined>
+  /** CSS blocks that Views can inject */
+  css?: {
+    /** CSS for font loading (@font-face rules or @import statements) */
+    fonts?: string
+  }
+}
+
+// =============================================================================
 // Host Context Types
 // =============================================================================
 
@@ -241,18 +436,18 @@ export interface DeviceCapabilities {
 }
 
 /**
- * Viewport dimensions available to the UI.
+ * Container dimensions for the iframe.
+ *
+ * Each dimension (height and width) operates independently and can be either:
+ * - **Fixed**: Host controls the size. View should fill the available space.
+ * - **Flexible**: View controls the size, up to the specified maximum.
+ * - **Unbounded**: View controls the size with no limit (field omitted).
  */
-export interface Viewport {
-  /** Current width in pixels */
-  width: number
-  /** Current height in pixels */
-  height: number
-  /** Maximum available width */
-  maxWidth?: number
-  /** Maximum available height */
-  maxHeight?: number
-}
+export type ContainerDimensions = (
+  | { height: number }
+  | { maxHeight?: number }
+) &
+  ({ width: number } | { maxWidth?: number })
 
 /**
  * Safe area boundaries in pixels.
@@ -275,27 +470,33 @@ export interface ToolInfo {
 }
 
 /**
- * Host context provided to the Guest UI during initialization.
+ * Host context provided to the View during initialization.
  *
- * When the Guest UI sends a `ui/initialize` request to the Host,
+ * When the View sends a `ui/initialize` request to the Host,
  * the Host SHOULD include UI-specific context in the `McpUiInitializeResult`'s
  * `hostContext` field.
  */
 export interface HostContext {
-  /** Metadata of the tool call that instantiated the App */
+  /** Metadata of the tool call that instantiated the View */
   toolInfo?: ToolInfo
 
   /** Current color theme preference */
   theme?: Theme
 
-  /** How the UI is currently displayed */
+  /** Style configuration for theming */
+  styles?: HostStyles
+
+  /** How the View is currently displayed */
   displayMode?: DisplayMode
 
   /** Display modes the host supports */
   availableDisplayModes?: DisplayMode[]
 
-  /** Current and maximum dimensions available to the UI */
-  viewport?: Viewport
+  /**
+   * Container dimensions for the iframe.
+   * Specify either width or maxWidth, and either height or maxHeight.
+   */
+  containerDimensions?: ContainerDimensions
 
   /** User's language/region preference (BCP 47, e.g., "en-US") */
   locale?: string
@@ -314,6 +515,69 @@ export interface HostContext {
 
   /** Safe area boundaries in pixels */
   safeAreaInsets?: SafeAreaInsets
+}
+
+// =============================================================================
+// Host Capabilities Types
+// =============================================================================
+
+/**
+ * Host capabilities sent to the View as part of the response to `ui/initialize`.
+ * They describe the features and capabilities that the Host supports.
+ */
+export interface HostCapabilities {
+  /** Experimental features (structure TBD) */
+  experimental?: Record<string, unknown>
+
+  /** Host supports opening external URLs */
+  openLinks?: Record<string, never>
+
+  /** Host can proxy tool calls to the MCP server */
+  serverTools?: {
+    /** Host supports tools/list_changed notifications */
+    listChanged?: boolean
+  }
+
+  /** Host can proxy resource reads to the MCP server */
+  serverResources?: {
+    /** Host supports resources/list_changed notifications */
+    listChanged?: boolean
+  }
+
+  /** Host accepts log messages */
+  logging?: Record<string, never>
+
+  /** Sandbox configuration applied by the host */
+  sandbox?: {
+    /** Permissions granted by the host */
+    permissions?: UIResourcePermissions
+    /** CSP domains approved by the host */
+    csp?: UIResourceCSP
+  }
+}
+
+// =============================================================================
+// App Capabilities Types
+// =============================================================================
+
+/**
+ * App capabilities sent by the View in the `ui/initialize` request.
+ */
+export interface McpUiAppCapabilities {
+  /** Experimental features (structure TBD) */
+  experimental?: Record<string, unknown>
+
+  /** App exposes MCP-style tools that the host can call */
+  tools?: {
+    /** App supports tools/list_changed notifications */
+    listChanged?: boolean
+  }
+
+  /**
+   * Display modes the app supports.
+   * @example ["inline", "fullscreen"]
+   */
+  availableDisplayModes?: DisplayMode[]
 }
 
 // =============================================================================
@@ -365,14 +629,17 @@ export interface JsonRpcNotification<
 // =============================================================================
 
 /**
- * Parameters for ui/initialize request from Guest UI to Host.
+ * Parameters for ui/initialize request from View to Host.
  */
 export interface UiInitializeParams {
-  capabilities?: Record<string, unknown>
+  /** App capabilities */
+  appCapabilities?: McpUiAppCapabilities
+  /** Client info */
   clientInfo?: {
     name: string
     version: string
   }
+  /** Protocol version */
   protocolVersion?: string
 }
 
@@ -381,7 +648,7 @@ export interface UiInitializeParams {
  */
 export interface McpUiInitializeResult {
   protocolVersion: string
-  hostCapabilities?: Record<string, unknown>
+  hostCapabilities?: HostCapabilities
   hostInfo?: {
     name: string
     version: string
@@ -390,7 +657,7 @@ export interface McpUiInitializeResult {
 }
 
 // =============================================================================
-// UI Request Types (UI → Host)
+// UI Request Types (View → Host)
 // =============================================================================
 
 /**
@@ -412,15 +679,54 @@ export interface UiMessageParams {
   }
 }
 
+/**
+ * ui/request-display-mode request - Request host to change display mode.
+ */
+export interface UiRequestDisplayModeParams {
+  /** Requested display mode */
+  mode: DisplayMode
+}
+
+/**
+ * ui/request-display-mode response.
+ */
+export interface UiRequestDisplayModeResult {
+  /** Actual display mode set (may differ from requested) */
+  mode: DisplayMode
+}
+
+/**
+ * Content block for ui/update-model-context.
+ */
+export interface ContentBlock {
+  type: string
+  text?: string
+  [key: string]: unknown
+}
+
+/**
+ * ui/update-model-context request - Update the model context.
+ *
+ * The View MAY send this request to update the Host's model context.
+ * This context will be used in future turns. Each request overwrites
+ * the previous context sent by the View.
+ */
+export interface UiUpdateModelContextParams {
+  /** Content blocks for the model */
+  content?: ContentBlock[]
+  /** Structured content for the model */
+  structuredContent?: Record<string, unknown>
+}
+
 // =============================================================================
-// UI Notification Types (Host → UI)
+// UI Notification Types (Host → View)
 // =============================================================================
 
 /**
  * ui/notifications/tool-input - Complete tool arguments.
  *
  * Host MUST send this notification with the complete tool arguments
- * after the Guest UI's initialize request completes.
+ * after the View's initialize request completes.
  */
 export interface UiToolInputParams {
   arguments: Record<string, unknown>
@@ -440,14 +746,10 @@ export interface UiToolInputPartialParams {
  * ui/notifications/tool-result - Tool execution result.
  *
  * Host MUST send this notification when tool execution completes
- * (if UI is displayed during tool execution).
+ * (if View is displayed during tool execution).
  */
 export interface UiToolResultParams {
-  content?: Array<{
-    type: string
-    text?: string
-    [key: string]: unknown
-  }>
+  content?: ContentBlock[]
   structuredContent?: Record<string, unknown>
   _meta?: Record<string, unknown>
   isError?: boolean
@@ -461,16 +763,16 @@ export interface UiToolCancelledParams {
 }
 
 /**
- * ui/resource-teardown - Host notifies UI before teardown.
+ * ui/resource-teardown - Host notifies View before teardown.
  */
 export interface UiResourceTeardownParams {
   reason?: string
 }
 
 /**
- * ui/notifications/size-changed - UI's size changed.
+ * ui/notifications/size-changed - View's size changed.
  *
- * Guest UI SHOULD send this notification when rendered content body size changes.
+ * View SHOULD send this notification when rendered content body size changes.
  */
 export interface UiSizeChangedParams {
   /** Viewport width in pixels */
@@ -483,6 +785,8 @@ export interface UiSizeChangedParams {
  * ui/notifications/host-context-changed - Host context has changed.
  *
  * Host MAY send this notification when any context field changes.
+ * This notification contains partial updates - the View SHOULD merge
+ * received fields with its current context state.
  */
 export type UiHostContextChangedParams = Partial<HostContext>
 
@@ -491,11 +795,11 @@ export type UiHostContextChangedParams = Partial<HostContext>
 // =============================================================================
 
 /**
- * ui/notifications/sandbox-ready - Sandbox proxy is ready.
+ * ui/notifications/sandbox-proxy-ready - Sandbox proxy is ready.
  *
  * Sent from Sandbox Proxy to Host.
  */
-export interface UiSandboxReadyParams {
+export interface UiSandboxProxyReadyParams {
   // Empty params
 }
 
@@ -509,6 +813,10 @@ export interface UiSandboxResourceReadyParams {
   html: string
   /** Optional override for inner iframe `sandbox` attribute */
   sandbox?: string
+  /** CSP configuration from resource metadata */
+  csp?: UIResourceCSP
+  /** Sandbox permissions from resource metadata */
+  permissions?: UIResourcePermissions
 }
 
 // =============================================================================
@@ -517,12 +825,14 @@ export interface UiSandboxResourceReadyParams {
 
 /** UI-specific JSON-RPC methods */
 export const UI_METHODS = {
-  // Requests (UI → Host)
+  // Requests (View → Host)
   INITIALIZE: "ui/initialize",
   OPEN_LINK: "ui/open-link",
   MESSAGE: "ui/message",
+  REQUEST_DISPLAY_MODE: "ui/request-display-mode",
+  UPDATE_MODEL_CONTEXT: "ui/update-model-context",
 
-  // Notifications (Host → UI)
+  // Notifications (Host → View)
   NOTIFICATIONS: {
     INITIALIZED: "ui/notifications/initialized",
     TOOL_INPUT: "ui/notifications/tool-input",
@@ -538,7 +848,7 @@ export const UI_METHODS = {
 
   // Sandbox Proxy (Web Hosts)
   SANDBOX: {
-    READY: "ui/notifications/sandbox-ready",
+    PROXY_READY: "ui/notifications/sandbox-proxy-ready",
     RESOURCE_READY: "ui/notifications/sandbox-resource-ready",
   },
 } as const
@@ -647,6 +957,9 @@ export interface UIResourceConfig {
   /** Content Security Policy configuration */
   csp?: UIResourceCSP
 
+  /** Sandbox permissions */
+  permissions?: UIResourcePermissions
+
   /** Whether the UI prefers a visible border */
   prefersBorder?: boolean
 
@@ -679,9 +992,19 @@ export interface UIToolConfig<
   /** URI of the associated UI resource */
   resourceUri: `ui://${string}`
 
+  /** Tool visibility - who can access this tool */
+  visibility?: ToolVisibility[]
+
   /** Tool handler function */
   handler: (args: TInput) => Promise<{
     text: string
     structuredContent: TOutput
   }>
 }
+
+// =============================================================================
+// Spec Version Constant
+// =============================================================================
+
+/** The version of the MCP Apps specification this module implements */
+export const MCP_APPS_SPEC_VERSION = "2026-01-26" as const

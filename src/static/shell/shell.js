@@ -128,7 +128,7 @@
     styleVariablesSchema[key] = { type: "string", optional: true }
   })
 
-  // HostContext Schema based on MCP Apps spec
+  // HostContext Schema based on MCP Apps spec (SEP-1865, version 2026-01-26)
   // Note: All top-level properties are optional (?)
   // containerDimensions uses union types for height/maxHeight and width/maxWidth
   const hostContextSchema = {
@@ -221,6 +221,9 @@
       },
     },
   }
+
+  // Spec version constant
+  const MCP_APPS_SPEC_VERSION = "2026-01-26"
 
   // ==========================================================================
   // Utilities
@@ -1099,14 +1102,14 @@
 
     try {
       const initParams = {
-        protocolVersion: "2025-06-18",
+        protocolVersion: MCP_APPS_SPEC_VERSION,
         capabilities: {},
         clientInfo: {
           name: clientName,
           version: clientVersion,
         },
       }
-      // MCP Jam compatibility
+      // MCP Jam compatibility - also send as appInfo/appCapabilities
       initParams.appInfo = initParams.clientInfo
       initParams.appCapabilities = initParams.capabilities
 
@@ -1266,6 +1269,9 @@
   // ==========================================================================
 
   window.MCPAppShell = {
+    // Spec version
+    SPEC_VERSION: MCP_APPS_SPEC_VERSION,
+
     // State access
     getHostInfo: function () {
       return currentHostInfo
