@@ -131,10 +131,12 @@
         document.getElementById('btn-message').addEventListener('click', function () {
           MCPAppShell.sendRequest('ui/message', {
             role: 'user',
-            content: {
-              type: 'text',
-              text: 'Hello from Messaging Inspector! This message was sent via ui/message.'
-            }
+            content: [
+              {
+                type: 'text',
+                text: 'Hello from Messaging Inspector! This message was sent via ui/message.'
+              }
+            ]
           }).then(function (result) {
             console.log('[Messaging] ui/message response:', result);
           }).catch(function (error) {
