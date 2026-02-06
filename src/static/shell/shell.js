@@ -269,13 +269,14 @@
   // ==========================================================================
 
   function sendSizeChanged() {
-    const width = document.body.scrollWidth
+    // const width = document.body.scrollWidth
     const height = document.body.scrollHeight
+    console.log("🔥Sending size changed notification:", { height })
     window.parent.postMessage(
       {
         jsonrpc: "2.0",
         method: "ui/notifications/size-changed",
-        params: { width, height },
+        params: { height },
       },
       "*"
     )
