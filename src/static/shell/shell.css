@@ -168,6 +168,20 @@ body.display-mode-fullscreen .terminal-grid {
 
 body.display-mode-fullscreen .terminal-grid > .terminal-section:last-child {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+body.display-mode-fullscreen
+  .terminal-grid
+  > .terminal-section:last-child
+  .dm-log,
+body.display-mode-fullscreen
+  .terminal-grid
+  > .terminal-section:last-child
+  .message-log {
+  flex: 1;
+  max-height: none;
 }
 
 /* PiP: allow vertical scrolling for overflow content */
