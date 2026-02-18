@@ -144,8 +144,30 @@ body {
 
 /* Fullscreen: fill viewport, allow vertical scrolling */
 body.display-mode-fullscreen {
-  height: 100vh;
+  min-height: 100vh;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+body.display-mode-fullscreen .app-content.is-ready {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+body.display-mode-fullscreen .terminal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+body.display-mode-fullscreen .terminal-grid {
+  flex: 1;
+}
+
+body.display-mode-fullscreen .terminal-grid > .terminal-section:last-child {
+  flex: 1;
 }
 
 /* PiP: allow vertical scrolling for overflow content */
