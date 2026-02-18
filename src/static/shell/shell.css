@@ -138,6 +138,45 @@ body {
     color 0.15s ease;
 }
 
+/* ==========================================================================
+   Display Mode Overrides
+   ========================================================================== */
+
+/* Fullscreen: fill viewport, allow vertical scrolling */
+body.display-mode-fullscreen {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* PiP: allow vertical scrolling for overflow content */
+body.display-mode-pip {
+  overflow-y: auto;
+}
+
+/* Compact layout adjustments for non-inline modes */
+body.display-mode-fullscreen h1,
+body.display-mode-pip h1 {
+  font-size: min(max(2.5rem, 6vw), 5rem);
+  margin: 0.5rem auto;
+}
+
+body.display-mode-pip {
+  padding: 16px 16px 0;
+}
+
+body.display-mode-pip h1 {
+  font-size: min(max(1.75rem, 5vw), 3rem);
+}
+
+body.display-mode-pip .terminal {
+  margin-left: -16px;
+  margin-right: -16px;
+}
+
+body.display-mode-pip .host-info-subtitle {
+  font-size: 0.75rem;
+}
+
 h1 {
   font-size: min(max(4rem, 8vw), 8rem);
   text-align: center;

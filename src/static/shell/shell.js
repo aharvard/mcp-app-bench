@@ -264,6 +264,17 @@
     return "dark"
   }
 
+  function setDisplayMode(mode) {
+    document.body.classList.remove(
+      "display-mode-inline",
+      "display-mode-fullscreen",
+      "display-mode-pip"
+    )
+    if (mode) {
+      document.body.classList.add("display-mode-" + mode)
+    }
+  }
+
   // ==========================================================================
   // Size Reporting
   // ==========================================================================
@@ -1036,6 +1047,9 @@
       if (data.params && data.params.theme) {
         setTheme(data.params.theme)
       }
+      if (data.params && data.params.displayMode) {
+        setDisplayMode(data.params.displayMode)
+      }
       if (currentHostInfo && currentHostInfo.hostContext) {
         Object.assign(currentHostInfo.hostContext, data.params)
       }
@@ -1129,9 +1143,12 @@
         result.hostCapabilities = result.appCapabilities
       }
 
-      // Apply initial theme
+      // Apply initial theme and display mode
       if (result.hostContext && result.hostContext.theme) {
         setTheme(result.hostContext.theme)
+      }
+      if (result.hostContext && result.hostContext.displayMode) {
+        setDisplayMode(result.hostContext.displayMode)
       }
 
       // Store host info
@@ -1302,6 +1319,9 @@
     // Theme
     setTheme: setTheme,
     getTheme: getTheme,
+
+    // Display Mode
+    setDisplayMode: setDisplayMode,
 
     // Utilities
     escapeHtml: escapeHtml,
