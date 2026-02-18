@@ -22,5 +22,7 @@ export const INSPECT_MESSAGING_URI =
   `${MCP_APPS_UI_RESOURCE_SCHEME}inspect-messaging` as const
 export const INSPECT_TOOL_DATA_URI =
   `${MCP_APPS_UI_RESOURCE_SCHEME}inspect-tool-data` as const
+export const INSPECT_DISPLAY_MODES_URI =
+  `${MCP_APPS_UI_RESOURCE_SCHEME}inspect-display-modes` as const
 
 export const APP_ICON = `${BASE_URL}/assets/icon.svg` as const

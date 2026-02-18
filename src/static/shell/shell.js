@@ -1109,10 +1109,15 @@
           name: clientName,
           version: clientVersion,
         },
+        appCapabilities: {
+          availableDisplayModes: ["inline", "fullscreen", "pip"],
+        },
       }
       // MCP Jam compatibility - also send as appInfo/appCapabilities
       initParams.appInfo = initParams.clientInfo
-      initParams.appCapabilities = initParams.capabilities
+      if (!initParams.appCapabilities) {
+        initParams.appCapabilities = initParams.capabilities
+      }
 
       const result = await sendRequest("ui/initialize", initParams)
 
@@ -1187,6 +1192,7 @@
     { id: "inspect-host-styles", icon: "🎨", label: "Styles" },
     { id: "inspect-messaging", icon: "💬", label: "Messaging" },
     { id: "inspect-tool-data", icon: "🔧", label: "Tool Data" },
+    { id: "inspect-display-modes", icon: "🖼️", label: "Display Modes" },
   ]
 
   function navigateToInspector(toolName) {

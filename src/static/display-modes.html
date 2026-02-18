@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css?v={{CACHE_HASH}}">
+  </head>
+  <body>
+    <!-- Loading State -->
+    <div id="app-loading" class="app-loading">
+      <div class="app-loading-spinner"></div>
+      <div class="app-loading-text">Waiting for tool result...</div>
+    </div>
+
+    <!-- Main Content (hidden until ready) -->
+    <div id="app-content" class="app-content">
+      <h1>Display Modes</h1>
+      <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+      
+      <div class="terminal">
+        <div class="terminal-grid">
+          <!-- Current State Section -->
+          <div class="terminal-section">
+            <h2>Current State</h2>
+            <div class="dm-state">
+              <div class="dm-state-row">
+                <span class="dm-state-label">Current Display Mode</span>
+                <span class="dm-state-value" id="dm-current-mode">—</span>
+              </div>
+              <div class="dm-state-row">
+                <span class="dm-state-label">Host Available Modes</span>
+                <span class="dm-state-value" id="dm-host-modes">—</span>
+              </div>
+              <div class="dm-state-row">
+                <span class="dm-state-label">App Declared Modes</span>
+                <span class="dm-state-value" id="dm-app-modes">inline, fullscreen, pip</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Display Mode Controls Section -->
+          <div class="terminal-section">
+            <h2>Request Display Mode</h2>
+            <p class="dm-description">
+              Click a button to send a <code>ui/request-display-mode</code> request to the host.
+              The host will respond with the actual mode set (which may differ from the requested mode).
+            </p>
+            <div class="dm-controls">
+              <button class="dm-mode-btn" data-mode="inline" id="btn-mode-inline">
+                <span class="dm-mode-btn-icon">📄</span>
+                <span class="dm-mode-btn-label">inline</span>
+                <span class="dm-mode-btn-desc">Embedded in content flow</span>
+              </button>
+              <button class="dm-mode-btn" data-mode="fullscreen" id="btn-mode-fullscreen">
+                <span class="dm-mode-btn-icon">🖥️</span>
+                <span class="dm-mode-btn-label">fullscreen</span>
+                <span class="dm-mode-btn-desc">Full screen / window</span>
+              </button>
+              <button class="dm-mode-btn" data-mode="pip" id="btn-mode-pip">
+                <span class="dm-mode-btn-icon">🪟</span>
+                <span class="dm-mode-btn-label">pip</span>
+                <span class="dm-mode-btn-desc">Picture-in-picture overlay</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Event Log Section -->
+          <div class="terminal-section">
+            <h2>Event Log</h2>
+            <div class="dm-log" id="dm-log">
+              <div class="message-empty">No display mode events yet. Click a button above to request a mode change.</div>
+            </div>
+          </div>
+        </div>
+        <div id="inspector-footer" class="inspector-footer"></div>
+      </div>
+    </div>
+
+    <script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
+    <script>
+      (function () {
+        var ALL_MODES = ['inline', 'fullscreen', 'pip'];
+        var currentMode = null;
+        var hostAvailableModes = null;
+        var logEntries = [];
+
+        // ====================================================================
+        // Rendering
+        // ====================================================================
+
+        function updateCurrentModeDisplay() {
+          var el = document.getElementById('dm-current-mode');
+          if (!el) return;
+          if (currentMode) {
+            el.textContent = currentMode;
+            el.className = 'dm-state-value is-active';
+          } else {
+            el.textContent = '—';
+            el.className = 'dm-state-value';
+          }
+        }
+
+        function updateHostModesDisplay() {
+          var el = document.getElementById('dm-host-modes');
+          if (!el) return;
+          if (hostAvailableModes && hostAvailableModes.length > 0) {
+            el.textContent = hostAvailableModes.join(', ');
+            el.className = 'dm-state-value is-active';
+          } else if (hostAvailableModes) {
+            el.textContent = '(empty array)';
+            el.className = 'dm-state-value is-warn';
+          } else {
+            el.textContent = 'Not provided by host';
+            el.className = 'dm-state-value is-missing';
+          }
+        }
+
+        function updateButtons() {
+          ALL_MODES.forEach(function (mode) {
+            var btn = document.getElementById('btn-mode-' + mode);
+            if (!btn) return;
+
+            // Mark the active mode
+            if (mode === currentMode) {
+              btn.classList.add('is-active');
+            } else {
+              btn.classList.remove('is-active');
+            }
+
+            // Check if host supports this mode
+            if (hostAvailableModes && hostAvailableModes.indexOf(mode) === -1) {
+              btn.classList.add('is-unavailable');
+              btn.title = 'Not available on this host';
+            } else {
+              btn.classList.remove('is-unavailable');
+              btn.title = '';
+            }
+          });
+        }
+
+        function addLogEntry(type, mode, detail) {
+          logEntries.push({
+            time: MCPAppShell.getTimestamp(),
+            type: type,
+            mode: mode,
+            detail: detail
+          });
+          renderLog();
+        }
+
+        function renderLog() {
+          var container = document.getElementById('dm-log');
+          if (!container) return;
+
+          if (logEntries.length === 0) {
+            container.innerHTML = '<div class="message-empty">No display mode events yet. Click a button above to request a mode change.</div>';
+            return;
+          }
+
+          var html = '';
+          // Newest first
+          for (var i = logEntries.length - 1; i >= 0; i--) {
+            var entry = logEntries[i];
+            var typeClass = 'dm-log-type-' + entry.type;
+            var typeLabel = entry.type === 'request' ? '↑ REQ' :
+                           entry.type === 'response' ? '↓ RES' :
+                           entry.type === 'notify' ? '↓ NFY' :
+                           entry.type === 'error' ? '✕ ERR' : entry.type;
+
+            html += '<div class="dm-log-entry">';
+            html += '<span class="message-time">' + entry.time + '</span>';
+            html += '<span class="dm-log-badge ' + typeClass + '">' + typeLabel + '</span>';
+            html += '<span class="dm-log-mode">' + MCPAppShell.escapeHtml(entry.mode) + '</span>';
+            if (entry.detail) {
+              html += '<span class="dm-log-detail">' + MCPAppShell.escapeHtml(entry.detail) + '</span>';
+            }
+            html += '</div>';
+          }
+
+          container.innerHTML = html;
+        }
+
+        function refreshAll() {
+          updateCurrentModeDisplay();
+          updateHostModesDisplay();
+          updateButtons();
+        }
+
+        // ====================================================================
+        // Display Mode Request
+        // ====================================================================
+
+        function requestDisplayMode(mode) {
+          addLogEntry('request', mode, 'Requesting mode: ' + mode);
+
+          MCPAppShell.sendRequest('ui/request-display-mode', {
+            mode: mode
+          }).then(function (result) {
+            var actualMode = result && result.mode ? result.mode : null;
+            if (actualMode) {
+              currentMode = actualMode;
+              if (actualMode === mode) {
+                addLogEntry('response', actualMode, 'Mode set successfully');
+              } else {
+                addLogEntry('response', actualMode, 'Host returned different mode (requested: ' + mode + ')');
+              }
+            } else {
+              addLogEntry('response', mode, 'Response: ' + JSON.stringify(result));
+            }
+            refreshAll();
+          }).catch(function (error) {
+            var msg = error && error.message ? error.message : JSON.stringify(error);
+            addLogEntry('error', mode, msg);
+          });
+        }
+
+        // ====================================================================
+        // Initialization
+        // ====================================================================
+
+        MCPAppShell.initialize({
+          clientName: 'Display Modes Inspector',
+          clientVersion: '1.0.0',
+          onInitialized: function (result) {
+            // Read initial display mode and available modes from host context
+            if (result.hostContext) {
+              if (result.hostContext.displayMode) {
+                currentMode = result.hostContext.displayMode;
+              }
+              if (result.hostContext.availableDisplayModes) {
+                hostAvailableModes = result.hostContext.availableDisplayModes;
+              }
+            }
+          }
+        });
+
+        // Listen for tool result to render content
+        window.addEventListener('mcp-tool-result', function () {
+          refreshAll();
+          MCPAppShell.setupInspectorFooter('inspect-display-modes');
+        });
+
+        // Listen for host context changes (display mode may change externally)
+        window.addEventListener('mcp-host-context-changed', function (e) {
+          var params = e.detail;
+          if (params && params.displayMode) {
+            var oldMode = currentMode;
+            currentMode = params.displayMode;
+            if (oldMode !== currentMode) {
+              addLogEntry('notify', currentMode, 'Host changed display mode (was: ' + (oldMode || 'unknown') + ')');
+            }
+            refreshAll();
+          }
+          if (params && params.availableDisplayModes) {
+            hostAvailableModes = params.availableDisplayModes;
+            refreshAll();
+          }
+        });
+
+        // Button click handlers
+        ALL_MODES.forEach(function (mode) {
+          var btn = document.getElementById('btn-mode-' + mode);
+          if (btn) {
+            btn.addEventListener('click', function () {
+              requestDisplayMode(mode);
+            });
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
