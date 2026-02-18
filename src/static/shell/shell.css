@@ -166,6 +166,10 @@ body.display-mode-fullscreen .terminal-grid {
   flex: 1;
 }
 
+body.display-mode-fullscreen .terminal-grid > .terminal-section {
+  flex-shrink: 0;
+}
+
 body.display-mode-fullscreen .terminal-grid > .terminal-section:last-child {
   flex: 1;
   display: flex;
