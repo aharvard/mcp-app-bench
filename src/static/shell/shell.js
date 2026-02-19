@@ -273,6 +273,9 @@
     if (mode) {
       document.body.classList.add("display-mode-" + mode)
     }
+    // Allow scrolling in fullscreen/pip by overriding html overflow
+    document.documentElement.style.overflow =
+      mode === "fullscreen" || mode === "pip" ? "auto" : ""
   }
 
   // ==========================================================================
