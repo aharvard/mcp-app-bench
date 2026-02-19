@@ -252,47 +252,37 @@
         // Initialization
         // ====================================================================
 
-        // Wait for tool input before initializing so we can declare the correct
-        // display modes in appCapabilities. Tool input arrives before initialize
-        // completes in the SDK lifecycle.
-        function doInitialize() {
-          MCPAppShell.initialize({
-            clientName: 'Display Modes Inspector',
-            clientVersion: '1.0.0',
-            availableDisplayModes: appDeclaredModes,
-            onInitialized: function (result) {
-              if (result.hostContext) {
-                if (result.hostContext.displayMode) {
-                  currentMode = result.hostContext.displayMode;
-                }
-                if (result.hostContext.availableDisplayModes) {
-                  hostAvailableModes = result.hostContext.availableDisplayModes;
-                }
-              }
-              refreshAll();
-            }
-          });
+        // Read tool input that may have already arrived before our code runs.
+        // The shell's message listener populates currentToolData synchronously,
+        // so by the time this script executes, tool input is already available.
+        var existingToolInput = MCPAppShell.getToolData().toolInput;
+        if (existingToolInput && existingToolInput.arguments) {
+          appDeclaredModes = modesFromToolArgs(existingToolInput.arguments);
         }
 
-        // Listen for tool input to extract declared modes, then initialize.
-        var initialized = false;
+        // Also listen for future tool input updates.
         window.addEventListener('mcp-tool-input', function (e) {
           var args = e.detail && e.detail.arguments ? e.detail.arguments : {};
           appDeclaredModes = modesFromToolArgs(args);
           refreshAll();
-          if (!initialized) {
-            initialized = true;
-            doInitialize();
-          }
         });
 
-        // Fallback: if no tool input arrives (e.g. no arguments), initialize with defaults.
-        setTimeout(function () {
-          if (!initialized) {
-            initialized = true;
-            doInitialize();
+        MCPAppShell.initialize({
+          clientName: 'Display Modes Inspector',
+          clientVersion: '1.0.0',
+          availableDisplayModes: appDeclaredModes,
+          onInitialized: function (result) {
+            if (result.hostContext) {
+              if (result.hostContext.displayMode) {
+                currentMode = result.hostContext.displayMode;
+              }
+              if (result.hostContext.availableDisplayModes) {
+                hostAvailableModes = result.hostContext.availableDisplayModes;
+              }
+            }
+            refreshAll();
           }
-        }, 500);
+        });
 
         // Listen for tool result to render content
         window.addEventListener('mcp-tool-result', function (e) {
