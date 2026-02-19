@@ -1109,11 +1109,37 @@
   // Initialization
   // ==========================================================================
 
+  // Track current app capabilities so they can be updated post-init
+  var currentAppCapabilities = {
+    availableDisplayModes: ["inline", "fullscreen", "pip"],
+  }
+
+  /**
+   * Update app capabilities and notify the host.
+   * Sends a ui/notifications/app-capabilities-changed notification with the
+   * full updated appCapabilities object.
+   */
+  function updateAppCapabilities(capabilities) {
+    if (capabilities.availableDisplayModes) {
+      currentAppCapabilities.availableDisplayModes =
+        capabilities.availableDisplayModes.slice()
+    }
+    sendNotification("ui/notifications/app-capabilities-changed", {
+      appCapabilities: currentAppCapabilities,
+    })
+  }
+
   async function initialize(options) {
     options = options || {}
     const clientName = options.clientName || "MCP App"
     const clientVersion = options.clientVersion || "1.0.0"
     const onInitialized = options.onInitialized || function () {}
+
+    // Allow apps to override initial display modes
+    if (options.availableDisplayModes) {
+      currentAppCapabilities.availableDisplayModes =
+        options.availableDisplayModes.slice()
+    }
 
     try {
       const initParams = {
@@ -1124,7 +1150,8 @@
           version: clientVersion,
         },
         appCapabilities: {
-          availableDisplayModes: ["inline", "fullscreen", "pip"],
+          availableDisplayModes:
+            currentAppCapabilities.availableDisplayModes.slice(),
         },
       }
       // MCP Jam compatibility - also send as appInfo/appCapabilities
@@ -1322,6 +1349,15 @@
 
     // Display Mode
     setDisplayMode: setDisplayMode,
+
+    // App Capabilities
+    updateAppCapabilities: updateAppCapabilities,
+    getAppCapabilities: function () {
+      return {
+        availableDisplayModes:
+          currentAppCapabilities.availableDisplayModes.slice(),
+      }
+    },
 
     // Utilities
     escapeHtml: escapeHtml,
