@@ -1116,6 +1116,11 @@
     const onInitialized = options.onInitialized || function () {}
 
     try {
+      const availableDisplayModes = options.availableDisplayModes || [
+        "inline",
+        "fullscreen",
+        "pip",
+      ]
       const initParams = {
         protocolVersion: MCP_APPS_SPEC_VERSION,
         capabilities: {},
@@ -1124,7 +1129,7 @@
           version: clientVersion,
         },
         appCapabilities: {
-          availableDisplayModes: ["inline", "fullscreen", "pip"],
+          availableDisplayModes: availableDisplayModes,
         },
       }
       // MCP Jam compatibility - also send as appInfo/appCapabilities

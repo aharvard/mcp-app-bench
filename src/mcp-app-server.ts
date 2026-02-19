@@ -427,9 +427,25 @@ export function initMcpAppServer(): McpServer {
       title: "Display Modes Inspector",
       description:
         "Test display mode switching between inline, fullscreen, and pip modes",
-      inputSchema: {},
+      inputSchema: {
+        inline: z
+          .boolean()
+          .default(true)
+          .describe("Declare support for inline display mode"),
+        fullscreen: z
+          .boolean()
+          .default(true)
+          .describe("Declare support for fullscreen display mode"),
+        pip: z
+          .boolean()
+          .default(true)
+          .describe("Declare support for picture-in-picture display mode"),
+      },
       outputSchema: {
         timestamp: z.string().describe("The timestamp of the inspection"),
+        availableDisplayModes: z
+          .array(z.string())
+          .describe("The display modes declared by the app"),
       },
       _meta: {
         ui: {
@@ -437,16 +453,22 @@ export function initMcpAppServer(): McpServer {
         },
       },
     },
-    async () => {
+    async (args) => {
+      const modes: string[] = []
+      if (args.inline !== false) modes.push("inline")
+      if (args.fullscreen !== false) modes.push("fullscreen")
+      if (args.pip !== false) modes.push("pip")
+
       return {
         content: [
           {
             type: "text",
-            text: `Display Modes Inspector loaded. Use the buttons to test display mode switching.`,
+            text: `Display Modes Inspector loaded. Declared modes: ${modes.join(", ")}`,
           },
         ],
         structuredContent: {
           timestamp: new Date().toISOString(),
+          availableDisplayModes: modes,
         },
       }
     }

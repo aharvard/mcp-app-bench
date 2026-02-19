@@ -83,7 +83,24 @@
         var ALL_MODES = ['inline', 'fullscreen', 'pip'];
         var currentMode = null;
         var hostAvailableModes = null;
+        var appDeclaredModes = ['inline', 'fullscreen', 'pip'];
         var logEntries = [];
+
+        // ====================================================================
+        // Helpers
+        // ====================================================================
+
+        /**
+         * Derive the declared modes array from tool input arguments.
+         * Each mode is a boolean flag (defaults to true when absent).
+         */
+        function modesFromToolArgs(args) {
+          var modes = [];
+          if (args.inline !== false) modes.push('inline');
+          if (args.fullscreen !== false) modes.push('fullscreen');
+          if (args.pip !== false) modes.push('pip');
+          return modes;
+        }
 
         // ====================================================================
         // Rendering
@@ -116,6 +133,13 @@
           }
         }
 
+        function updateAppModesDisplay() {
+          var el = document.getElementById('dm-app-modes');
+          if (!el) return;
+          el.textContent = appDeclaredModes.join(', ');
+          el.className = 'dm-state-value is-active';
+        }
+
         function updateButtons() {
           ALL_MODES.forEach(function (mode) {
             var btn = document.getElementById('btn-mode-' + mode);
@@ -135,6 +159,14 @@
             } else {
               btn.classList.remove('is-unavailable');
               btn.title = '';
+            }
+
+            // Disable buttons for modes the app didn't declare
+            if (appDeclaredModes.indexOf(mode) === -1) {
+              btn.classList.add('is-undeclared');
+              btn.title = 'Not declared by this app';
+            } else {
+              btn.classList.remove('is-undeclared');
             }
           });
         }
@@ -184,6 +216,7 @@
         function refreshAll() {
           updateCurrentModeDisplay();
           updateHostModesDisplay();
+          updateAppModesDisplay();
           updateButtons();
         }
 
@@ -219,6 +252,15 @@
         // Initialization
         // ====================================================================
 
+        // Listen for tool input to extract declared modes before full render.
+        // The tool arguments (inline, fullscreen, pip booleans) determine which
+        // modes the app declares in appCapabilities during ui/initialize.
+        window.addEventListener('mcp-tool-input', function (e) {
+          var args = e.detail && e.detail.arguments ? e.detail.arguments : {};
+          appDeclaredModes = modesFromToolArgs(args);
+          refreshAll();
+        });
+
         MCPAppShell.initialize({
           clientName: 'Display Modes Inspector',
           clientVersion: '1.0.0',
@@ -236,7 +278,13 @@
         });
 
         // Listen for tool result to render content
-        window.addEventListener('mcp-tool-result', function () {
+        window.addEventListener('mcp-tool-result', function (e) {
+          // Read declared modes from structuredContent if available
+          var detail = e.detail || {};
+          var sc = detail.structuredContent;
+          if (sc && sc.availableDisplayModes) {
+            appDeclaredModes = sc.availableDisplayModes;
+          }
           refreshAll();
           MCPAppShell.setupInspectorFooter('inspect-display-modes');
         });
