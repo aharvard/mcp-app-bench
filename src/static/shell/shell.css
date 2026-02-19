@@ -145,6 +145,7 @@ body {
 /* Fullscreen: fit exactly to viewport, no page-level scroll */
 body.display-mode-fullscreen {
   height: 100vh;
+  box-sizing: border-box;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -175,6 +176,19 @@ body.display-mode-fullscreen .terminal-grid > .terminal-section {
   flex-shrink: 0;
 }
 
+/* Footer stays pinned at bottom */
+body.display-mode-fullscreen .inspector-footer {
+  flex-shrink: 0;
+}
+
+/* Last section fills remaining space and scrolls internally */
+body.display-mode-fullscreen .terminal-grid > .terminal-section:last-child {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 body.display-mode-fullscreen
   .terminal-grid
   > .terminal-section:last-child
@@ -183,6 +197,8 @@ body.display-mode-fullscreen
   .terminal-grid
   > .terminal-section:last-child
   .message-log {
+  flex: 1;
+  min-height: 0;
   max-height: none;
   overflow-y: auto;
 }
