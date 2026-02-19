@@ -125,6 +125,10 @@ html {
   overflow: hidden;
 }
 
+html:has(body.display-mode-fullscreen) {
+  overflow-y: auto;
+}
+
 body {
   margin: 0;
   padding: 24px 24px 0;
