@@ -175,13 +175,6 @@ body.display-mode-fullscreen .terminal-grid > .terminal-section {
   flex-shrink: 0;
 }
 
-body.display-mode-fullscreen .terminal-grid > .terminal-section:last-child {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
 body.display-mode-fullscreen
   .terminal-grid
   > .terminal-section:last-child
@@ -190,8 +183,6 @@ body.display-mode-fullscreen
   .terminal-grid
   > .terminal-section:last-child
   .message-log {
-  flex: 1;
-  min-height: 0;
   max-height: none;
   overflow-y: auto;
 }
