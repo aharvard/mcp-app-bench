@@ -142,10 +142,10 @@ body {
    Display Mode Overrides
    ========================================================================== */
 
-/* Fullscreen: fill viewport, allow vertical scrolling */
+/* Fullscreen: fit exactly to viewport, no page-level scroll */
 body.display-mode-fullscreen {
-  min-height: 100vh;
-  overflow-y: auto;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -154,6 +154,7 @@ body.display-mode-fullscreen .app-content.is-ready {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
 }
 
 body.display-mode-fullscreen .terminal {
@@ -165,6 +166,7 @@ body.display-mode-fullscreen .terminal {
 
 body.display-mode-fullscreen .terminal-grid {
   flex: 1;
+  min-height: 0;
 }
 
 body.display-mode-fullscreen .terminal-grid > .terminal-section {
@@ -175,6 +177,7 @@ body.display-mode-fullscreen .terminal-grid > .terminal-section:last-child {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 body.display-mode-fullscreen
@@ -186,7 +189,9 @@ body.display-mode-fullscreen
   > .terminal-section:last-child
   .message-log {
   flex: 1;
+  min-height: 0;
   max-height: none;
+  overflow-y: auto;
 }
 
 /* PiP: allow vertical scrolling for overflow content */
