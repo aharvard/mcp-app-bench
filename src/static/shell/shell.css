@@ -166,6 +166,8 @@ body.display-mode-fullscreen .terminal {
 
 body.display-mode-fullscreen .terminal-grid {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 
