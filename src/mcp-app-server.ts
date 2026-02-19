@@ -20,6 +20,8 @@ import {
   INSPECT_MESSAGING_URI,
   INSPECT_TOOL_DATA_URI,
   INSPECT_DISPLAY_MODES_URI,
+  INSPECT_DISPLAY_MODES_INLINE_PIP_URI,
+  INSPECT_DISPLAY_MODES_INLINE_FULLSCREEN_URI,
 } from "./utils/constants.js"
 import { loadAppHtml } from "./utils/load-app-html.js"
 
@@ -420,32 +422,16 @@ export function initMcpAppServer(): McpServer {
     }
   )
 
-  // Display Modes inspector tool
+  // Display Modes inspector tool (all modes: inline, fullscreen, pip)
   server.registerTool(
     "inspect-display-modes",
     {
       title: "Display Modes Inspector",
       description:
         "Test display mode switching between inline, fullscreen, and pip modes",
-      inputSchema: {
-        inline: z
-          .boolean()
-          .default(true)
-          .describe("Declare support for inline display mode"),
-        fullscreen: z
-          .boolean()
-          .default(true)
-          .describe("Declare support for fullscreen display mode"),
-        pip: z
-          .boolean()
-          .default(true)
-          .describe("Declare support for picture-in-picture display mode"),
-      },
+      inputSchema: {},
       outputSchema: {
         timestamp: z.string().describe("The timestamp of the inspection"),
-        availableDisplayModes: z
-          .array(z.string())
-          .describe("The display modes declared by the app"),
       },
       _meta: {
         ui: {
@@ -453,22 +439,146 @@ export function initMcpAppServer(): McpServer {
         },
       },
     },
-    async (args) => {
-      const modes: string[] = []
-      if (args.inline !== false) modes.push("inline")
-      if (args.fullscreen !== false) modes.push("fullscreen")
-      if (args.pip !== false) modes.push("pip")
-
+    async () => {
       return {
         content: [
           {
             type: "text",
-            text: `Display Modes Inspector loaded. Declared modes: ${modes.join(", ")}`,
+            text: `Display Modes Inspector loaded. Declared modes: inline, fullscreen, pip`,
           },
         ],
         structuredContent: {
           timestamp: new Date().toISOString(),
-          availableDisplayModes: modes,
+        },
+      }
+    }
+  )
+
+  // Display Modes inspector resource (inline + pip only)
+  server.registerResource(
+    "inspect-display-modes-inline-pip",
+    INSPECT_DISPLAY_MODES_INLINE_PIP_URI,
+    {
+      title: "Display Modes Inspector (Inline + PiP)",
+      description:
+        "Test display mode switching with only inline and pip modes declared",
+      mimeType: MCP_APPS_MIME_TYPE,
+    },
+    async () => ({
+      contents: [
+        {
+          uri: INSPECT_DISPLAY_MODES_INLINE_PIP_URI,
+          mimeType: MCP_APPS_MIME_TYPE,
+          text: loadAppHtml("display-modes-inline-pip"),
+          _meta: {
+            ui: {
+              prefersBorder: true,
+              csp: {
+                resourceDomains: [
+                  BASE_URL,
+                  "https://fonts.googleapis.com",
+                  "https://fonts.gstatic.com",
+                ],
+              },
+            },
+          },
+        },
+      ],
+    })
+  )
+
+  // Display Modes inspector tool (inline + pip only)
+  server.registerTool(
+    "inspect-display-modes-inline-pip",
+    {
+      title: "Display Modes Inspector (Inline + PiP)",
+      description:
+        "Test display mode switching with only inline and pip modes declared",
+      inputSchema: {},
+      outputSchema: {
+        timestamp: z.string().describe("The timestamp of the inspection"),
+      },
+      _meta: {
+        ui: {
+          resourceUri: INSPECT_DISPLAY_MODES_INLINE_PIP_URI,
+        },
+      },
+    },
+    async () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Display Modes Inspector loaded. Declared modes: inline, pip`,
+          },
+        ],
+        structuredContent: {
+          timestamp: new Date().toISOString(),
+        },
+      }
+    }
+  )
+
+  // Display Modes inspector resource (inline + fullscreen only)
+  server.registerResource(
+    "inspect-display-modes-inline-fullscreen",
+    INSPECT_DISPLAY_MODES_INLINE_FULLSCREEN_URI,
+    {
+      title: "Display Modes Inspector (Inline + Fullscreen)",
+      description:
+        "Test display mode switching with only inline and fullscreen modes declared",
+      mimeType: MCP_APPS_MIME_TYPE,
+    },
+    async () => ({
+      contents: [
+        {
+          uri: INSPECT_DISPLAY_MODES_INLINE_FULLSCREEN_URI,
+          mimeType: MCP_APPS_MIME_TYPE,
+          text: loadAppHtml("display-modes-inline-fullscreen"),
+          _meta: {
+            ui: {
+              prefersBorder: true,
+              csp: {
+                resourceDomains: [
+                  BASE_URL,
+                  "https://fonts.googleapis.com",
+                  "https://fonts.gstatic.com",
+                ],
+              },
+            },
+          },
+        },
+      ],
+    })
+  )
+
+  // Display Modes inspector tool (inline + fullscreen only)
+  server.registerTool(
+    "inspect-display-modes-inline-fullscreen",
+    {
+      title: "Display Modes Inspector (Inline + Fullscreen)",
+      description:
+        "Test display mode switching with only inline and fullscreen modes declared",
+      inputSchema: {},
+      outputSchema: {
+        timestamp: z.string().describe("The timestamp of the inspection"),
+      },
+      _meta: {
+        ui: {
+          resourceUri: INSPECT_DISPLAY_MODES_INLINE_FULLSCREEN_URI,
+        },
+      },
+    },
+    async () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Display Modes Inspector loaded. Declared modes: inline, fullscreen`,
+          },
+        ],
+        structuredContent: {
+          timestamp: new Date().toISOString(),
         },
       }
     }
