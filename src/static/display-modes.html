@@ -32,31 +32,9 @@
                 <span class="dm-state-label">Host Available Modes</span>
                 <span class="dm-state-value" id="dm-host-modes">—</span>
               </div>
-              <div class="dm-state-row dm-state-row-toggles">
+              <div class="dm-state-row">
                 <span class="dm-state-label">App Declared Modes</span>
-                <div class="dm-toggles">
-                  <label class="dm-toggle">
-                    <input type="checkbox" id="toggle-inline" checked disabled>
-                    <span class="dm-toggle-track">
-                      <span class="dm-toggle-thumb"></span>
-                    </span>
-                    <span class="dm-toggle-label">inline</span>
-                  </label>
-                  <label class="dm-toggle">
-                    <input type="checkbox" id="toggle-fullscreen" checked>
-                    <span class="dm-toggle-track">
-                      <span class="dm-toggle-thumb"></span>
-                    </span>
-                    <span class="dm-toggle-label">fullscreen</span>
-                  </label>
-                  <label class="dm-toggle">
-                    <input type="checkbox" id="toggle-pip" checked>
-                    <span class="dm-toggle-track">
-                      <span class="dm-toggle-thumb"></span>
-                    </span>
-                    <span class="dm-toggle-label">pip</span>
-                  </label>
-                </div>
+                <span class="dm-state-value" id="dm-app-modes">inline, fullscreen, pip</span>
               </div>
             </div>
           </div>
@@ -105,7 +83,6 @@
         var ALL_MODES = ['inline', 'fullscreen', 'pip'];
         var currentMode = null;
         var hostAvailableModes = null;
-        var appDeclaredModes = ['inline', 'fullscreen', 'pip'];
         var logEntries = [];
 
         // ====================================================================
@@ -137,14 +114,6 @@
             el.textContent = 'Not provided by host';
             el.className = 'dm-state-value is-missing';
           }
-        }
-
-        function updateToggles() {
-          ALL_MODES.forEach(function (mode) {
-            var toggle = document.getElementById('toggle-' + mode);
-            if (!toggle) return;
-            toggle.checked = appDeclaredModes.indexOf(mode) !== -1;
-          });
         }
 
         function updateButtons() {
@@ -185,7 +154,7 @@
           if (!container) return;
 
           if (logEntries.length === 0) {
-            container.innerHTML = '<div class="message-empty">No display mode events yet. Click a button or toggle a mode above.</div>';
+            container.innerHTML = '<div class="message-empty">No display mode events yet. Click a button above to request a mode change.</div>';
             return;
           }
 
@@ -197,7 +166,6 @@
             var typeLabel = entry.type === 'request' ? '↑ REQ' :
                            entry.type === 'response' ? '↓ RES' :
                            entry.type === 'notify' ? '↓ NFY' :
-                           entry.type === 'capability' ? '↑ CAP' :
                            entry.type === 'error' ? '✕ ERR' : entry.type;
 
             html += '<div class="dm-log-entry">';
@@ -216,42 +184,7 @@
         function refreshAll() {
           updateCurrentModeDisplay();
           updateHostModesDisplay();
-          updateToggles();
           updateButtons();
-        }
-
-        // ====================================================================
-        // App Declared Modes Toggle
-        // ====================================================================
-
-        function getModesFromToggles() {
-          var modes = [];
-          ALL_MODES.forEach(function (mode) {
-            var toggle = document.getElementById('toggle-' + mode);
-            if (toggle && toggle.checked) {
-              modes.push(mode);
-            }
-          });
-          return modes;
-        }
-
-        function onToggleChanged(mode) {
-          var newModes = getModesFromToggles();
-          var oldModes = appDeclaredModes.slice();
-          appDeclaredModes = newModes;
-
-          // Notify the host about the capability change
-          MCPAppShell.updateAppCapabilities({
-            availableDisplayModes: newModes
-          });
-
-          // Log the change
-          var action = newModes.indexOf(mode) !== -1 ? 'enabled' : 'disabled';
-          addLogEntry(
-            'capability',
-            newModes.join(', '),
-            action.charAt(0).toUpperCase() + action.slice(1) + ' "' + mode + '" — sent ui/notifications/app-capabilities-changed'
-          );
         }
 
         // ====================================================================
@@ -331,16 +264,6 @@
           if (btn) {
             btn.addEventListener('click', function () {
               requestDisplayMode(mode);
-            });
-          }
-        });
-
-        // Toggle change handlers
-        ['fullscreen', 'pip'].forEach(function (mode) {
-          var toggle = document.getElementById('toggle-' + mode);
-          if (toggle) {
-            toggle.addEventListener('change', function () {
-              onToggleChanged(mode);
             });
           }
         });
