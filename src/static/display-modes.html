@@ -252,31 +252,47 @@
         // Initialization
         // ====================================================================
 
-        // Listen for tool input to extract declared modes before full render.
-        // The tool arguments (inline, fullscreen, pip booleans) determine which
-        // modes the app declares in appCapabilities during ui/initialize.
+        // Wait for tool input before initializing so we can declare the correct
+        // display modes in appCapabilities. Tool input arrives before initialize
+        // completes in the SDK lifecycle.
+        function doInitialize() {
+          MCPAppShell.initialize({
+            clientName: 'Display Modes Inspector',
+            clientVersion: '1.0.0',
+            availableDisplayModes: appDeclaredModes,
+            onInitialized: function (result) {
+              if (result.hostContext) {
+                if (result.hostContext.displayMode) {
+                  currentMode = result.hostContext.displayMode;
+                }
+                if (result.hostContext.availableDisplayModes) {
+                  hostAvailableModes = result.hostContext.availableDisplayModes;
+                }
+              }
+              refreshAll();
+            }
+          });
+        }
+
+        // Listen for tool input to extract declared modes, then initialize.
+        var initialized = false;
         window.addEventListener('mcp-tool-input', function (e) {
           var args = e.detail && e.detail.arguments ? e.detail.arguments : {};
           appDeclaredModes = modesFromToolArgs(args);
           refreshAll();
-        });
-
-        MCPAppShell.initialize({
-          clientName: 'Display Modes Inspector',
-          clientVersion: '1.0.0',
-          availableDisplayModes: appDeclaredModes,
-          onInitialized: function (result) {
-            // Read initial display mode and available modes from host context
-            if (result.hostContext) {
-              if (result.hostContext.displayMode) {
-                currentMode = result.hostContext.displayMode;
-              }
-              if (result.hostContext.availableDisplayModes) {
-                hostAvailableModes = result.hostContext.availableDisplayModes;
-              }
-            }
+          if (!initialized) {
+            initialized = true;
+            doInitialize();
           }
         });
+
+        // Fallback: if no tool input arrives (e.g. no arguments), initialize with defaults.
+        setTimeout(function () {
+          if (!initialized) {
+            initialized = true;
+            doInitialize();
+          }
+        }, 500);
 
         // Listen for tool result to render content
         window.addEventListener('mcp-tool-result', function (e) {
