@@ -264,6 +264,7 @@
         MCPAppShell.initialize({
           clientName: 'Display Modes Inspector',
           clientVersion: '1.0.0',
+          availableDisplayModes: appDeclaredModes,
           onInitialized: function (result) {
             // Read initial display mode and available modes from host context
             if (result.hostContext) {
