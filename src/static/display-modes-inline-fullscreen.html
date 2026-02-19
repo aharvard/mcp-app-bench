@@ -179,10 +179,10 @@
           for (var i = logEntries.length - 1; i >= 0; i--) {
             var entry = logEntries[i];
             var typeClass = 'dm-log-type-' + entry.type;
-            var typeLabel = entry.type === 'request' ? '↑ REQ' :
-                           entry.type === 'response' ? '↓ RES' :
-                           entry.type === 'notify' ? '↓ NFY' :
-                           entry.type === 'error' ? '✕ ERR' : entry.type;
+            var typeLabel = entry.type === 'request' ? '↑ Request' :
+                           entry.type === 'response' ? '↓ Response' :
+                           entry.type === 'notify' ? '↓ Notify' :
+                           entry.type === 'error' ? '✕ Error' : entry.type;
 
             html += '<div class="dm-log-entry">';
             html += '<span class="message-time">' + entry.time + '</span>';
