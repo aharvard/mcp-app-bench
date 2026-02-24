@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="color-scheme" content="light dark">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: 'Victor Mono', ui-monospace, monospace;
+        font-size: 0.8125rem;
+        line-height: 1.6;
+        padding: 24px;
+        /* NO background — intentionally transparent */
+      }
+
+      h1 {
+        font-family: 'Instrument Serif', serif;
+        font-size: 2rem;
+        font-weight: 400;
+        margin-bottom: 4px;
+      }
+
+      .subtitle {
+        font-size: 0.75rem;
+        opacity: 0.5;
+        margin-bottom: 20px;
+      }
+
+      .tests {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .test-card {
+        border: 1px dashed currentColor;
+        border-radius: 8px;
+        padding: 16px;
+        opacity: 0.85;
+      }
+
+      .test-card h2 {
+        font-family: 'Victor Mono', monospace;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .result {
+        font-size: 0.75rem;
+        padding: 8px 12px;
+        border-radius: 4px;
+        border: 1px solid currentColor;
+        margin-top: 8px;
+        opacity: 0.7;
+      }
+
+      .result.pass { border-color: #91cb80; color: #91cb80; }
+      .result.fail { border-color: #f94b4b; color: #f94b4b; }
+      .result.unknown { border-color: #fbcd44; color: #fbcd44; }
+
+      .swatch-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        align-items: center;
+      }
+
+      .swatch {
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+        border: 1px solid currentColor;
+      }
+
+      .swatch-label {
+        font-size: 0.6875rem;
+        opacity: 0.6;
+      }
+
+      .note {
+        font-size: 0.6875rem;
+        opacity: 0.5;
+        margin-top: 16px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app-content">
+      <h1>Transparency Inspector</h1>
+      <p class="subtitle">Tests whether the host allows iframe transparency across color schemes</p>
+
+      <div class="tests">
+        <!-- Test 1: Basic transparency -->
+        <div class="test-card">
+          <h2>1. Iframe Transparency</h2>
+          <p>This app has no background color. If transparent, the host's chat background should be visible behind this text.</p>
+          <div id="transparency-result" class="result unknown">Checking...</div>
+        </div>
+
+        <!-- Test 2: color-scheme detection -->
+        <div class="test-card">
+          <h2>2. Color Scheme</h2>
+          <p>Detected values from the iframe's perspective:</p>
+          <div id="color-scheme-info" class="result unknown">Checking...</div>
+        </div>
+
+        <!-- Test 3: Host theme vs iframe scheme -->
+        <div class="test-card">
+          <h2>3. Host Theme Alignment</h2>
+          <p>Does the host's reported theme match what the iframe resolves to?</p>
+          <div id="theme-alignment-result" class="result unknown">Waiting for host context...</div>
+        </div>
+      </div>
+
+      <p class="note">
+        ℹ If Test 1 fails in dark mode but passes in light mode, the host document likely
+        needs <code>color-scheme: light dark</code> to allow cross-scheme iframe transparency.
+        See <a href="https://fvsch.com/transparent-iframes" style="color: inherit;">fvsch.com/transparent-iframes</a>
+      </p>
+    </div>
+
+    <script>
+      (function () {
+        // ── Helpers ──────────────────────────────────────────────────────
+
+        function getComputedBg() {
+          return getComputedStyle(document.body).backgroundColor;
+        }
+
+        function parseBgAlpha(bg) {
+          // rgba(0, 0, 0, 0) or transparent
+          if (bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') return 0;
+          var m = bg.match(/rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+          if (m) return m[4] !== undefined ? parseFloat(m[4]) : 1;
+          return 1; // opaque fallback
+        }
+
+        function getIframeColorScheme() {
+          return getComputedStyle(document.documentElement).colorScheme || 'normal';
+        }
+
+        function getPrefersDark() {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+
+        // ── Test 1: Transparency ────────────────────────────────────────
+
+        function runTransparencyTest() {
+          var el = document.getElementById('transparency-result');
+          var bg = getComputedBg();
+          var alpha = parseBgAlpha(bg);
+
+          if (alpha === 0) {
+            el.className = 'result pass';
+            el.textContent = '✓ Transparent — background: ' + bg;
+          } else {
+            el.className = 'result fail';
+            el.textContent = '✗ Opaque — background: ' + bg + ' (alpha: ' + alpha + ')';
+          }
+        }
+
+        // ── Test 2: Color Scheme Info ───────────────────────────────────
+
+        function runColorSchemeTest() {
+          var el = document.getElementById('color-scheme-info');
+          var cs = getIframeColorScheme();
+          var prefersDark = getPrefersDark();
+          var metaTag = document.querySelector('meta[name="color-scheme"]');
+          var metaContent = metaTag ? metaTag.content : '(none)';
+
+          el.className = 'result pass';
+          el.innerHTML =
+            'meta color-scheme: <strong>' + metaContent + '</strong><br>' +
+            'computed colorScheme: <strong>' + cs + '</strong><br>' +
+            'prefers-color-scheme: dark → <strong>' + prefersDark + '</strong>';
+        }
+
+        // ── Test 3: Host Theme Alignment ────────────────────────────────
+
+        var hostTheme = null;
+
+        function runThemeAlignmentTest() {
+          var el = document.getElementById('theme-alignment-result');
+          if (!hostTheme) {
+            el.className = 'result unknown';
+            el.textContent = 'Waiting for host context...';
+            return;
+          }
+
+          var prefersDark = getPrefersDark();
+          var iframeResolvedTheme = prefersDark ? 'dark' : 'light';
+          var match = hostTheme === iframeResolvedTheme;
+
+          el.className = 'result ' + (match ? 'pass' : 'fail');
+          el.innerHTML =
+            'Host theme: <strong>' + hostTheme + '</strong> · ' +
+            'Iframe resolved: <strong>' + iframeResolvedTheme + '</strong> · ' +
+            (match ? '✓ Aligned' : '✗ Mismatch — may cause opacity issues');
+        }
+
+        function runAllTests() {
+          runTransparencyTest();
+          runColorSchemeTest();
+          runThemeAlignmentTest();
+          sendSizeChanged();
+        }
+
+        // ── Size reporting ──────────────────────────────────────────────
+
+        function sendSizeChanged() {
+          var height = document.body.scrollHeight;
+          window.parent.postMessage({
+            jsonrpc: '2.0',
+            method: 'ui/notifications/size-changed',
+            params: { height: height }
+          }, '*');
+        }
+
+        // ── MCP Protocol (minimal — just enough for initialize) ─────────
+
+        var requestId = 1;
+        var pendingRequests = new Map();
+
+        function sendRequest(method, params) {
+          return new Promise(function (resolve, reject) {
+            var id = requestId++;
+            pendingRequests.set(id, { resolve: resolve, reject: reject });
+            window.parent.postMessage({
+              jsonrpc: '2.0',
+              id: id,
+              method: method,
+              params: params || {}
+            }, '*');
+          });
+        }
+
+        function sendNotification(method, params) {
+          window.parent.postMessage({
+            jsonrpc: '2.0',
+            method: method,
+            params: params || {}
+          }, '*');
+        }
+
+        window.addEventListener('message', function (event) {
+          var data = event.data;
+          if (!data) return;
+
+          // Handle responses to our requests
+          if (data.id !== undefined && pendingRequests.has(data.id)) {
+            var pending = pendingRequests.get(data.id);
+            pendingRequests.delete(data.id);
+            if (data.error) {
+              pending.reject(data.error);
+            } else {
+              pending.resolve(data.result);
+            }
+            return;
+          }
+
+          // Handle host-context-changed notifications
+          if (data.method === 'ui/notifications/host-context-changed') {
+            if (data.params && data.params.theme) {
+              hostTheme = data.params.theme;
+              runAllTests();
+            }
+          }
+        });
+
+        // ── Initialize ──────────────────────────────────────────────────
+
+        sendRequest('ui/initialize', {
+          protocolVersion: '2025-03-26',
+          appInfo: { name: 'Transparency Inspector', version: '1.0.0' },
+          appCapabilities: {}
+        }).then(function (result) {
+          if (result && result.hostContext && result.hostContext.theme) {
+            hostTheme = result.hostContext.theme;
+          }
+          sendNotification('ui/notifications/initialized');
+          runAllTests();
+        }).catch(function () {
+          runAllTests();
+        });
+
+        // Re-run on media query changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', runAllTests);
+
+        // Initial run (in case initialize is slow)
+        setTimeout(runAllTests, 500);
+
+        // Resize observer
+        new ResizeObserver(sendSizeChanged).observe(document.body);
+      })();
+    </script>
+  </body>
+</html>

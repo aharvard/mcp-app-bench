@@ -22,6 +22,7 @@ import {
   INSPECT_DISPLAY_MODES_URI,
   INSPECT_DISPLAY_MODES_INLINE_PIP_URI,
   INSPECT_DISPLAY_MODES_INLINE_FULLSCREEN_URI,
+  INSPECT_TRANSPARENCY_URI,
 } from "./utils/constants.js"
 import { loadAppHtml } from "./utils/load-app-html.js"
 
@@ -578,6 +579,71 @@ export function initMcpAppServer(): McpServer {
           {
             type: "text",
             text: `Display Modes Inspector loaded. Declared modes: inline, fullscreen`,
+          },
+        ],
+        structuredContent: {
+          timestamp: new Date().toISOString(),
+        },
+      }
+    }
+  )
+
+  // Transparency inspector resource
+  server.registerResource(
+    "inspect-transparency",
+    INSPECT_TRANSPARENCY_URI,
+    {
+      title: "Transparency Inspector",
+      description:
+        "Test whether the host allows iframe transparency across light and dark color schemes",
+      mimeType: MCP_APPS_MIME_TYPE,
+    },
+    async () => ({
+      contents: [
+        {
+          uri: INSPECT_TRANSPARENCY_URI,
+          mimeType: MCP_APPS_MIME_TYPE,
+          text: loadAppHtml("transparency"),
+          _meta: {
+            ui: {
+              prefersBorder: false,
+              csp: {
+                resourceDomains: [
+                  BASE_URL,
+                  "https://fonts.googleapis.com",
+                  "https://fonts.gstatic.com",
+                ],
+              },
+            },
+          },
+        },
+      ],
+    })
+  )
+
+  // Transparency inspector tool
+  server.registerTool(
+    "inspect-transparency",
+    {
+      title: "Transparency Inspector",
+      description:
+        "Test whether the host allows iframe transparency across light and dark color schemes",
+      inputSchema: {},
+      outputSchema: {
+        timestamp: z.string().describe("The timestamp of the inspection"),
+      },
+      _meta: {
+        ui: {
+          resourceUri: INSPECT_TRANSPARENCY_URI,
+        },
+      },
+    },
+    async () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Transparency Inspector loaded. Checking iframe transparency across color schemes.`,
           },
         ],
         structuredContent: {
