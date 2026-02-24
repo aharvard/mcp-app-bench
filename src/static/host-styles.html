@@ -5,6 +5,732 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css?v={{CACHE_HASH}}">
+    <style>
+      /* ==========================================================================
+         Standards Manual — Page-Level Overrides
+         ========================================================================== */
+
+      body {
+        padding: 0;
+        background: var(--color-background-primary, var(--bg-primary));
+        color: var(--color-text-primary, var(--text-primary));
+      }
+
+      .app-content.is-ready {
+        display: block;
+      }
+
+      /* ==========================================================================
+         Theme Toggle (sticky)
+         ========================================================================== */
+
+      .standards-theme-toggle {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.25rem;
+        padding: 0.625rem 2rem;
+        background: var(--color-background-primary, var(--bg-primary));
+        border-bottom: 1px solid var(--color-border-primary, var(--border));
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.6875rem;
+        letter-spacing: 0.03em;
+      }
+
+      .standards-theme-toggle-label {
+        color: var(--color-text-secondary, var(--text-secondary));
+        margin-right: 0.5rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .standards-theme-btn {
+        padding: 0.25rem 0.625rem;
+        border: 1px solid var(--color-border-primary, var(--border));
+        background: transparent;
+        color: var(--color-text-secondary, var(--text-secondary));
+        font-family: inherit;
+        font-size: inherit;
+        cursor: pointer;
+        transition: all 0.12s ease;
+        border-radius: 0;
+      }
+
+      .standards-theme-btn:first-of-type {
+        border-radius: 4px 0 0 4px;
+      }
+
+      .standards-theme-btn:last-of-type {
+        border-radius: 0 4px 4px 0;
+      }
+
+      .standards-theme-btn:not(:first-of-type) {
+        border-left: none;
+      }
+
+      .standards-theme-btn.is-active {
+        background: var(--color-text-primary, var(--text-primary));
+        color: var(--color-background-primary, var(--bg-primary));
+        border-color: var(--color-text-primary, var(--text-primary));
+        font-weight: 700;
+      }
+
+      /* ==========================================================================
+         Standards Manual — Layout
+         ========================================================================== */
+
+      .standards-manual {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 3rem 2rem 4rem;
+      }
+
+      /* Cover — no custom styles needed, shell.css handles h1 + .host-info-subtitle */
+
+      /* ==========================================================================
+         Section (Chapter)
+         ========================================================================== */
+
+      .standards-section {
+        margin-bottom: 4rem;
+      }
+
+      .standards-section-header {
+        display: flex;
+        align-items: baseline;
+        gap: 1rem;
+        border-bottom: 2px solid var(--color-text-primary, var(--text-primary));
+        padding-bottom: 0.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .standards-section-number {
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        font-weight: 700;
+        line-height: 1;
+        color: var(--color-text-primary, var(--text-primary));
+        letter-spacing: -0.02em;
+        flex-shrink: 0;
+      }
+
+      .standards-section-title {
+        font-family: var(--font-sans, 'Instrument Serif', system-ui, sans-serif);
+        font-size: var(--font-heading-xl-size, clamp(1.5rem, 4vw, 2.25rem));
+        font-weight: var(--font-weight-bold, 700);
+        line-height: var(--font-heading-xl-line-height, 1.1);
+        color: var(--color-text-primary, var(--text-primary));
+        margin: 0;
+      }
+
+      /* Subsection */
+      .standards-subsection {
+        margin-bottom: 2.5rem;
+      }
+
+      .standards-subsection:last-child {
+        margin-bottom: 0;
+      }
+
+      .standards-subsection-title {
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-text-secondary, var(--text-secondary));
+        margin: 0 0 1.25rem;
+        padding-bottom: 0.375rem;
+        border-bottom: 1px solid var(--color-border-primary, var(--border));
+      }
+
+      /* ==========================================================================
+         §1 — Color Specimens
+         ========================================================================== */
+
+      .color-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1.25rem;
+      }
+
+      .color-specimen {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      /* Background color swatch */
+      .color-specimen-swatch {
+        height: 64px;
+        border-radius: var(--border-radius-md, 8px);
+        border: 1px solid var(--color-border-primary, var(--border));
+        position: relative;
+        overflow: hidden;
+      }
+
+      .color-specimen-swatch-half {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+      }
+
+      .color-specimen-swatch-half.is-light {
+        left: 0;
+      }
+
+      .color-specimen-swatch-half.is-dark {
+        right: 0;
+      }
+
+      .color-specimen-swatch-divider {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: rgba(128,128,128,0.3);
+      }
+
+      /* Text color specimen */
+      .color-specimen-text-preview {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        border-radius: var(--border-radius-md, 8px);
+        border: 1px solid var(--color-border-primary, var(--border));
+        background: var(--color-background-primary, var(--bg-primary));
+      }
+
+      .color-specimen-text-preview-aa {
+        font-family: var(--font-sans, system-ui, sans-serif);
+        font-size: 2rem;
+        font-weight: var(--font-weight-bold, 700);
+        line-height: 1;
+        flex-shrink: 0;
+      }
+
+      .color-specimen-text-preview-split {
+        display: flex;
+        flex: 1;
+        height: 32px;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid var(--color-border-primary, var(--border));
+      }
+
+      .color-specimen-text-preview-split-half {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.5625rem;
+        font-weight: 600;
+      }
+
+      /* Border color specimen */
+      .color-specimen-border-preview {
+        height: 64px;
+        border-radius: var(--border-radius-md, 8px);
+        border-width: 2px;
+        border-style: solid;
+        background: transparent;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .color-specimen-border-indicator {
+        position: absolute;
+        bottom: 0;
+        height: 6px;
+        width: 50%;
+      }
+
+      .color-specimen-border-indicator.is-light {
+        left: 0;
+      }
+
+      .color-specimen-border-indicator.is-dark {
+        right: 0;
+      }
+
+      /* Ring color specimen */
+      .color-specimen-ring-preview {
+        height: 64px;
+        width: 100%;
+        border-radius: var(--border-radius-md, 8px);
+        background: var(--color-background-secondary, var(--bg-terminal));
+        outline-offset: 2px;
+        outline-width: 2px;
+        outline-style: solid;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .color-specimen-ring-indicator {
+        position: absolute;
+        bottom: 0;
+        height: 6px;
+        width: 50%;
+      }
+
+      .color-specimen-ring-indicator.is-light {
+        left: 0;
+      }
+
+      .color-specimen-ring-indicator.is-dark {
+        right: 0;
+      }
+
+      .color-specimen-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+      }
+
+      .color-specimen-var {
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--color-text-primary, var(--text-primary));
+        word-break: break-all;
+      }
+
+      .color-specimen-values {
+        display: flex;
+        gap: 0.75rem;
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.625rem;
+        color: var(--color-text-secondary, var(--text-secondary));
+      }
+
+      .color-specimen-val-label {
+        opacity: 0.6;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      /* ==========================================================================
+         §2 — Typography Specimens
+         ========================================================================== */
+
+      /* Font family */
+      .font-specimen {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--color-border-primary, var(--border));
+      }
+
+      .font-specimen:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .font-specimen-sample {
+        font-size: 1.75rem;
+        line-height: 1.3;
+        color: var(--color-text-primary, var(--text-primary));
+        margin-bottom: 0.5rem;
+      }
+
+      .font-specimen-meta {
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.75rem;
+        color: var(--color-text-secondary, var(--text-secondary));
+      }
+
+      .font-specimen-meta code {
+        color: var(--color-text-primary, var(--text-primary));
+        font-weight: 500;
+      }
+
+      /* Font weight row */
+      .weight-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .weight-specimen {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 1rem;
+        align-items: baseline;
+      }
+
+      @media (max-width: 500px) {
+        .weight-specimen {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .weight-specimen-meta {
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.75rem;
+        color: var(--color-text-secondary, var(--text-secondary));
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+      }
+
+      .weight-specimen-meta code {
+        color: var(--color-text-primary, var(--text-primary));
+        font-weight: 500;
+      }
+
+      .weight-specimen-preview {
+        font-family: var(--font-sans, system-ui, sans-serif);
+        font-size: 1.25rem;
+        color: var(--color-text-primary, var(--text-primary));
+        line-height: 1.4;
+      }
+
+      /* Type scale */
+      .type-scale-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      .type-scale-specimen {
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+      }
+
+      .type-scale-specimen-preview {
+        color: var(--color-text-primary, var(--text-primary));
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .type-scale-specimen-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 1rem;
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.625rem;
+        color: var(--color-text-secondary, var(--text-secondary));
+      }
+
+      .type-scale-specimen-meta code {
+        color: var(--color-text-primary, var(--text-primary));
+        font-weight: 500;
+      }
+
+      /* ==========================================================================
+         §3 — Structure Specimens
+         ========================================================================== */
+
+      .radius-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .radius-specimen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .radius-specimen-box {
+        width: 72px;
+        height: 72px;
+        border: 2px solid var(--color-text-primary, var(--text-primary));
+        opacity: 0.6;
+      }
+
+      .radius-specimen-meta {
+        text-align: center;
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.6875rem;
+        color: var(--color-text-secondary, var(--text-secondary));
+        line-height: 1.5;
+      }
+
+      .radius-specimen-meta code {
+        display: block;
+        color: var(--color-text-primary, var(--text-primary));
+        font-weight: 500;
+      }
+
+      .border-width-specimen {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+      }
+
+      .border-width-specimen-box {
+        width: 72px;
+        height: 72px;
+        border-style: solid;
+        border-color: var(--color-text-primary, var(--text-primary));
+        opacity: 0.6;
+        border-radius: var(--border-radius-md, 8px);
+      }
+
+      .border-width-specimen-meta {
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.75rem;
+        color: var(--color-text-secondary, var(--text-secondary));
+        line-height: 1.5;
+      }
+
+      .border-width-specimen-meta code {
+        color: var(--color-text-primary, var(--text-primary));
+        font-weight: 500;
+      }
+
+      /* ==========================================================================
+         §4 — Shadow Specimens
+         ========================================================================== */
+
+      .shadow-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 2rem;
+      }
+
+      .shadow-specimen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .shadow-specimen-card {
+        width: 100%;
+        height: 80px;
+        background: var(--color-background-primary, var(--bg-primary));
+        border-radius: var(--border-radius-md, 8px);
+        border: 1px solid var(--color-border-primary, var(--border));
+      }
+
+      .shadow-specimen-meta {
+        text-align: center;
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.6875rem;
+        color: var(--color-text-secondary, var(--text-secondary));
+        line-height: 1.5;
+        word-break: break-all;
+        max-width: 220px;
+      }
+
+      .shadow-specimen-meta code {
+        display: block;
+        color: var(--color-text-primary, var(--text-primary));
+        font-weight: 500;
+        margin-bottom: 0.125rem;
+      }
+
+      /* ==========================================================================
+         §5 — Composed Specimens
+         ========================================================================== */
+
+      .composed-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 2rem;
+      }
+
+      .composed-specimen {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .composed-specimen-label {
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.625rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-text-secondary, var(--text-secondary));
+      }
+
+      /* Card specimen */
+      .composed-card {
+        padding: 1.25rem;
+        border-radius: var(--border-radius-md, 8px);
+        background: var(--color-background-secondary);
+        border: 1px solid var(--color-border-primary);
+        box-shadow: var(--shadow-md);
+      }
+
+      .composed-card h4 {
+        margin: 0 0 0.375rem;
+        font-family: var(--font-sans, system-ui, sans-serif);
+        font-weight: var(--font-weight-semibold, 600);
+        color: var(--color-text-primary);
+        font-size: var(--font-text-md-size, 1rem);
+        line-height: var(--font-text-md-line-height, 1.5);
+      }
+
+      .composed-card p {
+        margin: 0;
+        font-family: var(--font-sans, system-ui, sans-serif);
+        color: var(--color-text-secondary);
+        font-size: var(--font-text-sm-size, 0.875rem);
+        line-height: var(--font-text-sm-line-height, 1.5);
+      }
+
+      /* Button row */
+      .composed-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .composed-btn {
+        padding: 0.5rem 1rem;
+        border-radius: var(--border-radius-md, 8px);
+        font-family: var(--font-sans, system-ui, sans-serif);
+        font-size: var(--font-text-sm-size, 0.875rem);
+        font-weight: var(--font-weight-semibold, 600);
+        border: 1px solid transparent;
+        cursor: default;
+        line-height: 1.4;
+      }
+
+      .composed-btn.is-primary {
+        background: var(--color-background-inverse);
+        color: var(--color-text-inverse);
+      }
+
+      .composed-btn.is-ghost {
+        background: var(--color-background-ghost);
+        border-color: var(--color-border-ghost);
+        color: var(--color-text-primary);
+      }
+
+      .composed-btn.is-danger {
+        background: var(--color-background-danger);
+        color: var(--color-text-inverse);
+      }
+
+      .composed-btn.is-disabled {
+        background: var(--color-background-disabled);
+        color: var(--color-text-disabled);
+      }
+
+      /* Form input */
+      .composed-input-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+      }
+
+      .composed-input {
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--border-radius-md, 8px);
+        background: var(--color-background-primary);
+        border: 1px solid var(--color-border-primary);
+        color: var(--color-text-primary);
+        font-family: var(--font-sans, system-ui, sans-serif);
+        font-size: var(--font-text-sm-size, 0.875rem);
+        outline: none;
+        transition: box-shadow 0.15s ease;
+      }
+
+      .composed-input:focus {
+        box-shadow: 0 0 0 2px var(--color-ring-primary);
+      }
+
+      .composed-input::placeholder {
+        color: var(--color-text-secondary);
+      }
+
+      /* Status banners */
+      .composed-banners {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .composed-banner {
+        padding: 0.625rem 1rem;
+        border-radius: var(--border-radius-md, 8px);
+        font-family: var(--font-sans, system-ui, sans-serif);
+        font-size: var(--font-text-sm-size, 0.875rem);
+        font-weight: var(--font-weight-medium, 500);
+        color: var(--color-text-inverse);
+      }
+
+      .composed-banner.is-info {
+        background: var(--color-background-info);
+      }
+
+      .composed-banner.is-success {
+        background: var(--color-background-success);
+      }
+
+      .composed-banner.is-warning {
+        background: var(--color-background-warning);
+      }
+
+      .composed-banner.is-danger {
+        background: var(--color-background-danger);
+      }
+
+      /* ==========================================================================
+         §6 — Fonts CSS
+         ========================================================================== */
+
+      .fonts-css-block {
+        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-size: 0.6875rem;
+        line-height: 1.6;
+        color: var(--color-text-secondary, var(--text-secondary));
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin: 0;
+        padding: 1.25rem;
+        background: var(--color-background-secondary, var(--bg-terminal));
+        border: 1px solid var(--color-border-primary, var(--border));
+        border-radius: var(--border-radius-md, 8px);
+        overflow-x: auto;
+      }
+
+      /* ==========================================================================
+         Footer
+         ========================================================================== */
+
+      .standards-footer {
+        margin-top: 4rem;
+        padding-top: 1.5rem;
+        border-top: 2px solid var(--color-text-primary, var(--text-primary));
+      }
+
+      /* Responsive */
+      @media (max-width: 600px) {
+        .standards-manual {
+          padding: 2rem 1rem 3rem;
+        }
+
+        .standards-theme-toggle {
+          padding: 0.5rem 1rem;
+        }
+
+        .color-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .composed-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
   </head>
   <body>
     <!-- Loading State -->
@@ -15,250 +741,516 @@
 
     <!-- Main Content (hidden until ready) -->
     <div id="app-content" class="app-content">
+
+      <!-- Theme Toggle (sticky) -->
+      <div class="standards-theme-toggle">
+        <span class="standards-theme-toggle-label">Theme</span>
+        <button class="standards-theme-btn is-active" data-theme="host">Host</button>
+        <button class="standards-theme-btn" data-theme="light">Light</button>
+        <button class="standards-theme-btn" data-theme="dark">Dark</button>
+      </div>
+
       <h1>Host Styles Inspector</h1>
       <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
-      
-      <div class="terminal">
-        <div class="terminal-grid">
-          <div class="terminal-section">
-            <h2>Host Styles</h2>
-            <div class="styles-scroll" id="host-styles-content">
-              <div class="styles-empty">Waiting for host styles...</div>
-            </div>
-          </div>
+
+      <div class="standards-manual">
+
+        <!-- Rendered content goes here -->
+        <div id="host-styles-content">
+          <div class="styles-empty">Waiting for host styles...</div>
         </div>
-        <div id="inspector-footer" class="inspector-footer"></div>
+
       </div>
+
+      <!-- Footer nav -->
+      <div id="inspector-footer" class="inspector-footer"></div>
     </div>
 
     <script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
     <script>
       (function () {
-        function renderColorSwatchCard(varName, value) {
-          const lightDark = MCPAppShell.parseLightDark(value);
-          let html = '<div class="color-swatch-card">';
-          html += '<div class="color-swatch-preview">';
-          
-          if (lightDark) {
-            html += '<div class="color-swatch-half" style="background: ' + lightDark.light + ';"></div>';
-            html += '<div class="color-swatch-half" style="background: ' + lightDark.dark + ';"></div>';
+        'use strict';
+
+        // =====================================================================
+        // Theme Override
+        // =====================================================================
+
+        let themeOverride = 'host'; // 'host' | 'light' | 'dark'
+        let hostTheme = 'dark';
+
+        function getActiveTheme() {
+          return themeOverride === 'host' ? hostTheme : themeOverride;
+        }
+
+        function applyThemeOverride(mode) {
+          themeOverride = mode;
+
+          // Update toggle buttons
+          document.querySelectorAll('.standards-theme-btn').forEach(function (btn) {
+            btn.classList.toggle('is-active', btn.getAttribute('data-theme') === mode);
+          });
+
+          // Apply the resolved theme
+          var resolved = getActiveTheme();
+          MCPAppShell.setTheme(resolved);
+          document.documentElement.style.colorScheme = resolved;
+
+          // Re-render to update specimens
+          renderHostStyles();
+        }
+
+        // Wire up toggle buttons
+        document.querySelectorAll('.standards-theme-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            applyThemeOverride(btn.getAttribute('data-theme'));
+          });
+        });
+
+        // =====================================================================
+        // Helpers
+        // =====================================================================
+
+        var esc = MCPAppShell.escapeHtml;
+
+        /**
+         * Returns black or white depending on which contrasts better
+         * against the given hex color. Used for L/D labels on swatches.
+         */
+        function contrastColor(hex) {
+          hex = (hex || '').replace('#', '');
+          if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+          if (hex.length !== 6) return '#000';
+          var r = parseInt(hex.substring(0,2), 16);
+          var g = parseInt(hex.substring(2,4), 16);
+          var b = parseInt(hex.substring(4,6), 16);
+          // Relative luminance (sRGB)
+          var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          return lum > 0.5 ? '#000' : '#fff';
+        }
+
+        // =====================================================================
+        // §1 — Color
+        // =====================================================================
+
+        function renderColorSection(categories) {
+          var html = '';
+          html += sectionHeader('01', 'Color');
+
+          // Background Colors
+          if (categories['Background Colors'] && categories['Background Colors'].length) {
+            html += subsection('Backgrounds', renderColorGrid(categories['Background Colors'], 'background'));
+          }
+
+          // Text Colors
+          if (categories['Text Colors'] && categories['Text Colors'].length) {
+            html += subsection('Text', renderColorGrid(categories['Text Colors'], 'text'));
+          }
+
+          // Border Colors
+          if (categories['Border Colors'] && categories['Border Colors'].length) {
+            html += subsection('Borders', renderColorGrid(categories['Border Colors'], 'border'));
+          }
+
+          // Ring Colors
+          if (categories['Ring Colors'] && categories['Ring Colors'].length) {
+            html += subsection('Rings', renderColorGrid(categories['Ring Colors'], 'ring'));
+          }
+
+          return wrapSection(html);
+        }
+
+        function renderColorGrid(vars, type) {
+          var html = '<div class="color-grid">';
+          for (var i = 0; i < vars.length; i++) {
+            var varName = vars[i][0];
+            var value = vars[i][1];
+            html += renderColorSpecimen(varName, value, type);
+          }
+          html += '</div>';
+          return html;
+        }
+
+        function renderColorSpecimen(varName, value, type) {
+          var ld = MCPAppShell.parseLightDark(value);
+          var lightVal = ld ? ld.light : value;
+          var darkVal = ld ? ld.dark : value;
+
+          var html = '<div class="color-specimen">';
+
+          if (type === 'text') {
+            // "Aa" in live color + split light/dark color indicator
+            html += '<div class="color-specimen-text-preview">';
+            html += '<span class="color-specimen-text-preview-aa" style="color: var(' + varName + ');">Aa</span>';
+            html += '<div class="color-specimen-text-preview-split">';
+            html += '<div class="color-specimen-text-preview-split-half" style="background: ' + esc(lightVal) + '; color: ' + contrastColor(lightVal) + ';">L</div>';
+            html += '<div class="color-specimen-text-preview-split-half" style="background: ' + esc(darkVal) + '; color: ' + contrastColor(darkVal) + ';">D</div>';
+            html += '</div>';
+            html += '</div>';
+          } else if (type === 'border') {
+            html += '<div class="color-specimen-border-preview" style="border-color: var(' + varName + ');">';
+            html += '<div class="color-specimen-border-indicator is-light" style="background: ' + esc(lightVal) + ';"></div>';
+            html += '<div class="color-specimen-border-indicator is-dark" style="background: ' + esc(darkVal) + ';"></div>';
+            html += '</div>';
+          } else if (type === 'ring') {
+            html += '<div class="color-specimen-ring-preview" style="outline-color: var(' + varName + ');">';
+            html += '<div class="color-specimen-ring-indicator is-light" style="background: ' + esc(lightVal) + ';"></div>';
+            html += '<div class="color-specimen-ring-indicator is-dark" style="background: ' + esc(darkVal) + ';"></div>';
+            html += '</div>';
           } else {
-            html += '<div class="color-swatch-half" style="background: ' + value + '; flex: 1;"></div>';
+            // background
+            html += '<div class="color-specimen-swatch">';
+            html += '<div class="color-specimen-swatch-half is-light" style="background: ' + lightVal + ';"></div>';
+            html += '<div class="color-specimen-swatch-half is-dark" style="background: ' + darkVal + ';"></div>';
+            html += '<div class="color-specimen-swatch-divider"></div>';
+            html += '</div>';
           }
-          
+
+          html += '<div class="color-specimen-meta">';
+          html += '<div class="color-specimen-var">' + esc(varName) + '</div>';
+          html += '<div class="color-specimen-values">';
+          html += '<span><span class="color-specimen-val-label">L </span>' + esc(lightVal) + '</span>';
+          html += '<span><span class="color-specimen-val-label">D </span>' + esc(darkVal) + '</span>';
           html += '</div>';
-          html += '<div class="color-swatch-info">';
-          html += '<div class="color-swatch-var">var(' + varName + ')</div>';
-          html += '<div class="color-swatch-value">' + MCPAppShell.escapeHtml(value) + '</div>';
           html += '</div>';
+
           html += '</div>';
           return html;
         }
 
-        function renderFontFamilies(vars, allVars) {
-          let html = '<div class="font-family-grid">';
-          
-          for (const [varName, value] of vars) {
-            html += '<div class="font-family-item">';
-            html += '<div class="font-family-preview" style="font-family: var(' + varName + ');">Lorem ipsum dolor sit amet</div>';
-            html += '<div class="font-family-meta">';
-            html += '<span class="type-scale-var">var(' + varName + ')</span>';
-            html += '<span class="type-scale-value is-string">' + MCPAppShell.escapeHtml(value) + '</span>';
-            html += '</div>';
+        // =====================================================================
+        // §2 — Typography
+        // =====================================================================
+
+        function renderTypographySection(categories, allVars) {
+          var html = '';
+          html += sectionHeader('02', 'Typography');
+
+          // Font Families
+          if (categories['Font Families'] && categories['Font Families'].length) {
+            html += subsection('Font Families', renderFontFamilies(categories['Font Families']));
+          }
+
+          // Font Weights
+          if (categories['Font Weights'] && categories['Font Weights'].length) {
+            html += subsection('Font Weights', renderFontWeights(categories['Font Weights']));
+          }
+
+          // Text Styles
+          if (categories['Text Styles'] && categories['Text Styles'].length) {
+            html += subsection('Type Scale — Text', renderTypeScale(categories['Text Styles'], allVars, false));
+          }
+
+          // Heading Styles
+          if (categories['Heading Styles'] && categories['Heading Styles'].length) {
+            html += subsection('Type Scale — Headings', renderTypeScale(categories['Heading Styles'], allVars, true));
+          }
+
+          return wrapSection(html);
+        }
+
+        function renderFontFamilies(vars) {
+          var pangram = 'The quick brown fox jumps over the lazy dog. 0123456789';
+          var html = '';
+          for (var i = 0; i < vars.length; i++) {
+            var varName = vars[i][0];
+            var value = vars[i][1];
+            html += '<div class="font-specimen">';
+            html += '<div class="font-specimen-sample" style="font-family: var(' + varName + ');">' + pangram + '</div>';
+            html += '<div class="font-specimen-meta"><code>' + esc(varName) + '</code> — ' + esc(value) + '</div>';
             html += '</div>';
           }
-          
-          html += '</div>';
           return html;
         }
 
-        function renderFontWeights(vars, allVars) {
-          let html = '<div class="font-weight-grid">';
-          
-          for (const [varName, value] of vars) {
-            html += '<div class="font-weight-item">';
-            html += '<div class="font-weight-meta">';
-            html += '<span class="type-scale-var">var(' + varName + ')</span>';
-            html += '<span class="type-scale-value">' + MCPAppShell.escapeHtml(value) + '</span>';
-            html += '</div>';
-            html += '<div class="font-weight-preview" style="font-family: var(--font-sans); font-weight: var(' + varName + ');">The quick brown fox jumps over the lazy dog</div>';
+        function renderFontWeights(vars) {
+          var html = '<div class="weight-grid">';
+          for (var i = 0; i < vars.length; i++) {
+            var varName = vars[i][0];
+            var value = vars[i][1];
+            html += '<div class="weight-specimen">';
+            html += '<div class="weight-specimen-meta"><code>' + esc(varName) + '</code><span>' + esc(value) + '</span></div>';
+            html += '<div class="weight-specimen-preview" style="font-weight: var(' + varName + ');">The quick brown fox jumps over the lazy dog</div>';
             html += '</div>';
           }
-          
           html += '</div>';
           return html;
         }
 
         function renderTypeScale(vars, allVars, isHeading) {
-          const sizeGroups = {};
-          
-          for (const [varName, value] of vars) {
-            const match = varName.match(isHeading ? /--font-heading-([a-z0-9]+)-(size|line-height)/ : /--font-text-([a-z0-9]+)-(size|line-height)/);
+          var sizeGroups = {};
+          var pattern = isHeading ? /--font-heading-([a-z0-9]+)-(size|line-height)/ : /--font-text-([a-z0-9]+)-(size|line-height)/;
+
+          for (var i = 0; i < vars.length; i++) {
+            var varName = vars[i][0];
+            var value = vars[i][1];
+            var match = varName.match(pattern);
             if (match) {
-              const sizeKey = match[1];
-              const propType = match[2];
-              if (!sizeGroups[sizeKey]) {
-                sizeGroups[sizeKey] = {};
-              }
-              sizeGroups[sizeKey][propType] = { varName, value };
+              var sizeKey = match[1];
+              var propType = match[2];
+              if (!sizeGroups[sizeKey]) sizeGroups[sizeKey] = {};
+              sizeGroups[sizeKey][propType] = { varName: varName, value: value };
             }
           }
-          
-          const fontFamilyValue = allVars['--font-sans'] || 'system-ui, sans-serif';
-          const sizeOrder = isHeading 
+
+          var sizeOrder = isHeading
             ? ['3xl', '2xl', 'xl', 'lg', 'md', 'sm', 'xs']
             : ['lg', 'md', 'sm', 'xs'];
-          
-          let html = '<div class="type-scale-grid">';
-          
-          for (const sizeKey of sizeOrder) {
-            const group = sizeGroups[sizeKey];
+
+          var html = '<div class="type-scale-stack">';
+
+          for (var s = 0; s < sizeOrder.length; s++) {
+            var key = sizeOrder[s];
+            var group = sizeGroups[key];
             if (!group || !group.size) continue;
-            
-            let previewStyle = 'font-family: var(--font-sans); font-size: var(' + group.size.varName + ');';
+
+            var style = 'font-family: var(--font-sans); font-size: var(' + group.size.varName + ');';
             if (group['line-height']) {
-              previewStyle += ' line-height: var(' + group['line-height'].varName + ');';
+              style += ' line-height: var(' + group['line-height'].varName + ');';
             }
-            previewStyle += ' font-weight: ' + (isHeading ? '700' : '400') + ';';
-            
-            html += '<div class="type-scale-item">';
-            html += '<div class="type-scale-preview" style="' + previewStyle + '">Lorem ipsum</div>';
-            html += '<div class="type-scale-meta">';
-            
-            html += '<span class="type-scale-var">var(' + group.size.varName + ')</span>';
-            html += '<span class="type-scale-value">' + MCPAppShell.escapeHtml(group.size.value) + '</span>';
-            
+            style += ' font-weight: ' + (isHeading ? 'var(--font-weight-bold, 700)' : 'var(--font-weight-normal, 400)') + ';';
+
+            html += '<div class="type-scale-specimen">';
+            html += '<div class="type-scale-specimen-preview" style="' + style + '">Lorem ipsum dolor sit amet</div>';
+            html += '<div class="type-scale-specimen-meta">';
+            html += '<span><code>' + esc(group.size.varName) + '</code> ' + esc(group.size.value) + '</span>';
             if (group['line-height']) {
-              html += '<span class="type-scale-var">var(' + group['line-height'].varName + ')</span>';
-              html += '<span class="type-scale-value">' + MCPAppShell.escapeHtml(group['line-height'].value) + '</span>';
+              html += '<span><code>' + esc(group['line-height'].varName) + '</code> ' + esc(group['line-height'].value) + '</span>';
             }
-            
-            html += '<span class="type-scale-var">var(--font-sans)</span>';
-            html += '<span class="type-scale-value is-string">' + MCPAppShell.escapeHtml(fontFamilyValue) + '</span>';
-            
             html += '</div>';
             html += '</div>';
           }
-          
+
           html += '</div>';
           return html;
         }
 
-        function renderBorderRadius(vars) {
-          let html = '<div class="border-radius-grid">';
-          
-          for (const [varName, value] of vars) {
-            html += '<div class="border-radius-item">';
-            html += '<div class="border-radius-preview" style="border-radius: var(' + varName + ');"></div>';
-            html += '<div class="border-radius-meta">';
-            html += '<div class="border-radius-var">var(' + varName + ')</div>';
-            html += '<div class="border-radius-value">' + MCPAppShell.escapeHtml(value) + '</div>';
-            html += '</div>';
+        // =====================================================================
+        // §3 — Structure
+        // =====================================================================
+
+        function renderStructureSection(categories) {
+          var html = '';
+          html += sectionHeader('03', 'Structure');
+
+          var radiusVars = [];
+          var widthVars = [];
+
+          if (categories['Border Radius']) {
+            for (var i = 0; i < categories['Border Radius'].length; i++) {
+              var v = categories['Border Radius'][i];
+              if (v[0].indexOf('--border-width') === 0) {
+                widthVars.push(v);
+              } else {
+                radiusVars.push(v);
+              }
+            }
+          }
+
+          if (radiusVars.length) {
+            html += subsection('Border Radius', renderRadiusGrid(radiusVars));
+          }
+
+          if (widthVars.length) {
+            html += subsection('Border Width', renderBorderWidth(widthVars));
+          }
+
+          return wrapSection(html);
+        }
+
+        function renderRadiusGrid(vars) {
+          var html = '<div class="radius-grid">';
+          for (var i = 0; i < vars.length; i++) {
+            var varName = vars[i][0];
+            var value = vars[i][1];
+            html += '<div class="radius-specimen">';
+            html += '<div class="radius-specimen-box" style="border-radius: var(' + varName + ');"></div>';
+            html += '<div class="radius-specimen-meta"><code>' + esc(varName) + '</code>' + esc(value) + '</div>';
             html += '</div>';
           }
-          
           html += '</div>';
           return html;
         }
 
-        function renderShadows(vars) {
-          let html = '<div class="shadow-grid">';
-          
-          for (const [varName, value] of vars) {
-            html += '<div class="shadow-item">';
-            html += '<div class="shadow-preview" style="box-shadow: var(' + varName + ');"></div>';
-            html += '<div class="shadow-meta">';
-            html += '<div class="shadow-var">var(' + varName + ')</div>';
-            html += '<div class="shadow-value">' + MCPAppShell.escapeHtml(value) + '</div>';
-            html += '</div>';
+        function renderBorderWidth(vars) {
+          var html = '';
+          for (var i = 0; i < vars.length; i++) {
+            var varName = vars[i][0];
+            var value = vars[i][1];
+            html += '<div class="border-width-specimen">';
+            html += '<div class="border-width-specimen-box" style="border-width: var(' + varName + ');"></div>';
+            html += '<div class="border-width-specimen-meta"><code>' + esc(varName) + '</code><br>' + esc(value) + '</div>';
             html += '</div>';
           }
-          
-          html += '</div>';
           return html;
         }
+
+        // =====================================================================
+        // §4 — Shadows
+        // =====================================================================
+
+        function renderShadowSection(categories) {
+          if (!categories['Shadows'] || !categories['Shadows'].length) return '';
+
+          var html = '';
+          html += sectionHeader('04', 'Shadows');
+
+          html += '<div class="shadow-row">';
+          for (var i = 0; i < categories['Shadows'].length; i++) {
+            var varName = categories['Shadows'][i][0];
+            var value = categories['Shadows'][i][1];
+            html += '<div class="shadow-specimen">';
+            html += '<div class="shadow-specimen-card" style="box-shadow: var(' + varName + ');"></div>';
+            html += '<div class="shadow-specimen-meta"><code>' + esc(varName) + '</code>' + esc(value) + '</div>';
+            html += '</div>';
+          }
+          html += '</div>';
+
+          return wrapSection(html);
+        }
+
+        // =====================================================================
+        // §5 — Composed Specimens
+        // =====================================================================
+
+        function renderComposedSection() {
+          var html = '';
+          html += sectionHeader('05', 'Composed Specimens');
+
+          html += '<div class="composed-grid">';
+
+          // Card
+          html += '<div class="composed-specimen">';
+          html += '<div class="composed-specimen-label">Card</div>';
+          html += '<div class="composed-card">';
+          html += '<h4>Card Heading</h4>';
+          html += '<p>Body text demonstrating the secondary text color on a secondary background with medium shadow elevation.</p>';
+          html += '</div>';
+          html += '</div>';
+
+          // Buttons
+          html += '<div class="composed-specimen">';
+          html += '<div class="composed-specimen-label">Buttons</div>';
+          html += '<div class="composed-buttons">';
+          html += '<div class="composed-btn is-primary">Primary</div>';
+          html += '<div class="composed-btn is-ghost">Ghost</div>';
+          html += '<div class="composed-btn is-danger">Danger</div>';
+          html += '<div class="composed-btn is-disabled">Disabled</div>';
+          html += '</div>';
+          html += '</div>';
+
+          // Form Input
+          html += '<div class="composed-specimen">';
+          html += '<div class="composed-specimen-label">Form Input</div>';
+          html += '<div class="composed-input-wrapper">';
+          html += '<input class="composed-input" type="text" placeholder="Placeholder text..." value="">';
+          html += '</div>';
+          html += '</div>';
+
+          // Status Banners
+          html += '<div class="composed-specimen">';
+          html += '<div class="composed-specimen-label">Status Banners</div>';
+          html += '<div class="composed-banners">';
+          html += '<div class="composed-banner is-info">Info — Informational message</div>';
+          html += '<div class="composed-banner is-success">Success — Operation completed</div>';
+          html += '<div class="composed-banner is-warning">Warning — Proceed with caution</div>';
+          html += '<div class="composed-banner is-danger">Danger — Something went wrong</div>';
+          html += '</div>';
+          html += '</div>';
+
+          html += '</div>';
+
+          return wrapSection(html);
+        }
+
+        // =====================================================================
+        // §6 — Fonts CSS
+        // =====================================================================
+
+        function renderFontsCSSSection(styles) {
+          if (!styles.css || !styles.css.fonts) return '';
+
+          var html = '';
+          html += sectionHeader('06', 'Fonts CSS');
+          html += '<pre class="fonts-css-block">' + esc(styles.css.fonts) + '</pre>';
+          return wrapSection(html);
+        }
+
+        // =====================================================================
+        // Layout Helpers
+        // =====================================================================
+
+        function sectionHeader(number, title) {
+          return '<div class="standards-section-header">' +
+            '<span class="standards-section-number">§' + number + '</span>' +
+            '<h2 class="standards-section-title">' + esc(title) + '</h2>' +
+            '</div>';
+        }
+
+        function subsection(title, content) {
+          return '<div class="standards-subsection">' +
+            '<h3 class="standards-subsection-title">' + esc(title) + '</h3>' +
+            content +
+            '</div>';
+        }
+
+        function wrapSection(content) {
+          return '<section class="standards-section">' + content + '</section>';
+        }
+
+        // =====================================================================
+        // Main Render
+        // =====================================================================
 
         function renderHostStyles() {
-          const container = document.getElementById('host-styles-content');
-          const hostInfo = MCPAppShell.getHostInfo();
-          const styles = hostInfo && hostInfo.hostContext ? hostInfo.hostContext.styles : null;
+          var container = document.getElementById('host-styles-content');
+          var hostInfo = MCPAppShell.getHostInfo();
+          var styles = hostInfo && hostInfo.hostContext ? hostInfo.hostContext.styles : null;
 
           if (!container) return;
-          
+
           if (!styles || !styles.variables || Object.keys(styles.variables).length === 0) {
             container.innerHTML = '<div class="styles-empty">No styles provided by host</div>';
             MCPAppShell.sendSizeChanged();
             return;
           }
-          
+
           // Inject variables as CSS custom properties
           MCPAppShell.injectStyleVariables(styles.variables);
 
-          const categories = MCPAppShell.categorizeStyleVariables(styles.variables);
-          const allVars = styles.variables;
-          let html = '';
+          var categories = MCPAppShell.categorizeStyleVariables(styles.variables);
+          var allVars = styles.variables;
 
-          for (const [category, vars] of Object.entries(categories)) {
-            if (vars.length === 0) continue;
-            
-            const isColorCategory = category.includes('Colors');
-            
-            html += '<div class="styles-category">';
-            html += '<h3 class="styles-category-title">' + category + '</h3>';
-            
-            if (isColorCategory) {
-              html += '<div class="color-swatches-grid">';
-              for (const [varName, value] of vars) {
-                html += renderColorSwatchCard(varName, value);
-              }
-              html += '</div>';
-            } else if (category === 'Font Families') {
-              html += renderFontFamilies(vars, allVars);
-            } else if (category === 'Font Weights') {
-              html += renderFontWeights(vars, allVars);
-            } else if (category === 'Heading Styles') {
-              html += renderTypeScale(vars, allVars, true);
-            } else if (category === 'Text Styles') {
-              html += renderTypeScale(vars, allVars, false);
-            } else if (category === 'Border Radius') {
-              html += renderBorderRadius(vars);
-            } else if (category === 'Shadows') {
-              html += renderShadows(vars);
-            } else {
-              html += '<table class="styles-table"><tbody>';
-              for (const [varName, value] of vars) {
-                const displayName = varName.replace(/^--/, '');
-                html += '<tr>';
-                html += '<td class="var-name">' + displayName + '</td>';
-                html += '<td class="var-value">' + MCPAppShell.escapeHtml(value) + '</td>';
-                html += '</tr>';
-              }
-              html += '</tbody></table>';
-            }
-            
-            html += '</div>';
-          }
-
-          // Show fonts CSS if available
-          if (styles.css && styles.css.fonts) {
-            html += '<div class="styles-category">';
-            html += '<h3 class="styles-category-title">Custom Fonts CSS</h3>';
-            html += '<pre style="font-family: \'Victor Mono\', ui-monospace, monospace; font-size: 0.7rem; color: var(--text-secondary); white-space: pre-wrap; margin: 0;">';
-            html += styles.css.fonts.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            html += '</pre>';
-            html += '</div>';
-          }
+          var html = '';
+          html += renderColorSection(categories);
+          html += renderTypographySection(categories, allVars);
+          html += renderStructureSection(categories);
+          html += renderShadowSection(categories);
+          html += renderComposedSection();
+          html += renderFontsCSSSection(styles);
 
           container.innerHTML = html;
           MCPAppShell.sendSizeChanged();
         }
 
+        // =====================================================================
         // Initialize
+        // =====================================================================
+
         MCPAppShell.initialize({
           clientName: 'Host Styles Inspector',
           clientVersion: '1.0.0',
           onInitialized: function (result) {
-            // Content will render when tool-result is received
+            if (result.hostContext && result.hostContext.theme) {
+              hostTheme = result.hostContext.theme;
+            }
+            // Update subtitle
+            var subtitle = document.getElementById('host-info-subtitle');
+            if (subtitle && result.hostInfo) {
+              var name = result.hostInfo.name || 'Unknown Host';
+              var version = result.hostInfo.version || '';
+              var hostDisplay = version ? name + ' v' + version : name;
+              subtitle.textContent = 'Current host: ' + hostDisplay;
+            }
           }
         });
 
@@ -269,8 +1261,16 @@
         });
 
         // Listen for host context changes
-        window.addEventListener('mcp-host-context-changed', function () {
+        window.addEventListener('mcp-host-context-changed', function (e) {
           if (MCPAppShell.isReady()) {
+            if (e.detail && e.detail.theme) {
+              hostTheme = e.detail.theme;
+            }
+            // If in host mode, follow the host theme
+            if (themeOverride === 'host') {
+              MCPAppShell.setTheme(hostTheme);
+              document.documentElement.style.colorScheme = hostTheme;
+            }
             renderHostStyles();
           }
         });

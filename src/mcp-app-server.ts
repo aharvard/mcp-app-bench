@@ -418,6 +418,9 @@ export function initMcpAppServer(): McpServer {
         structuredContent: {
           timestamp: new Date().toISOString(),
         },
+        _meta: {
+          foo: "bar",
+        },
       }
     }
   )
