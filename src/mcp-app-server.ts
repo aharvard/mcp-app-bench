@@ -302,9 +302,18 @@ export function initMcpAppServer(): McpServer {
       title: "Host Info Inspector",
       description:
         "Inspect host context, capabilities, protocol version, and validate against the HostContext schema",
-      inputSchema: {},
+      inputSchema: {
+        user_message: z
+          .string()
+          .describe("The last message the user sent to the agent")
+          .optional(),
+      },
       outputSchema: {
         timestamp: z.string().describe("The timestamp of the inspection"),
+        user_message: z
+          .string()
+          .describe("The last message the user sent to the agent")
+          .optional(),
       },
       _meta: {
         ui: {
@@ -312,7 +321,7 @@ export function initMcpAppServer(): McpServer {
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -322,6 +331,7 @@ export function initMcpAppServer(): McpServer {
         ],
         structuredContent: {
           timestamp: new Date().toISOString(),
+          ...(args.user_message ? { user_message: args.user_message } : {}),
         },
       }
     }
