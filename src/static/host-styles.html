@@ -24,13 +24,18 @@
       }
 
       /* Allow scrolling in fullscreen mode — this page has long-form content */
-      html,
-      body.display-mode-fullscreen {
+      html {
         overflow: auto;
       }
 
       body.display-mode-fullscreen {
         height: auto;
+        overflow-y: auto;
+        display: block;
+      }
+
+      body.display-mode-fullscreen .app-content.is-ready {
+        display: block;
       }
 
       .app-content.is-ready {
