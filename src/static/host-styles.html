@@ -1,10 +1,17 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css?v={{CACHE_HASH}}">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{BASE_URL}}/shell/shell.css?v={{CACHE_HASH}}"
+    />
+    <meta name="color-scheme" content="light dark" />
     <style>
       /* ==========================================================================
          Standards Manual — Page-Level Overrides
@@ -35,7 +42,7 @@
         padding: 0.625rem 2rem;
         background: var(--color-background-primary, var(--bg-primary));
         border-bottom: 1px solid var(--color-border-primary, var(--border));
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.6875rem;
         letter-spacing: 0.03em;
       }
@@ -109,7 +116,7 @@
       }
 
       .standards-section-number {
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: clamp(2rem, 5vw, 3.5rem);
         font-weight: 700;
         line-height: 1;
@@ -119,7 +126,12 @@
       }
 
       .standards-section-title {
-        font-family: var(--font-sans, 'Instrument Serif', system-ui, sans-serif);
+        font-family: var(
+          --font-sans,
+          "Instrument Serif",
+          system-ui,
+          sans-serif
+        );
         font-size: var(--font-heading-xl-size, clamp(1.5rem, 4vw, 2.25rem));
         font-weight: var(--font-weight-bold, 700);
         line-height: var(--font-heading-xl-line-height, 1.1);
@@ -137,7 +149,7 @@
       }
 
       .standards-subsection-title {
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.6875rem;
         font-weight: 600;
         text-transform: uppercase;
@@ -194,7 +206,7 @@
         top: 0;
         bottom: 0;
         width: 1px;
-        background: rgba(128,128,128,0.3);
+        background: rgba(128, 128, 128, 0.3);
       }
 
       /* Text color specimen */
@@ -230,7 +242,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.5625rem;
         font-weight: 600;
       }
@@ -296,7 +308,7 @@
       }
 
       .color-specimen-var {
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.75rem;
         font-weight: 500;
         color: var(--color-text-primary, var(--text-primary));
@@ -306,7 +318,7 @@
       .color-specimen-values {
         display: flex;
         gap: 0.75rem;
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.625rem;
         color: var(--color-text-secondary, var(--text-secondary));
       }
@@ -342,7 +354,7 @@
       }
 
       .font-specimen-meta {
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.75rem;
         color: var(--color-text-secondary, var(--text-secondary));
       }
@@ -373,7 +385,7 @@
       }
 
       .weight-specimen-meta {
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.75rem;
         color: var(--color-text-secondary, var(--text-secondary));
         display: flex;
@@ -417,7 +429,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: 0.25rem 1rem;
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.625rem;
         color: var(--color-text-secondary, var(--text-secondary));
       }
@@ -453,7 +465,7 @@
 
       .radius-specimen-meta {
         text-align: center;
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.6875rem;
         color: var(--color-text-secondary, var(--text-secondary));
         line-height: 1.5;
@@ -481,7 +493,7 @@
       }
 
       .border-width-specimen-meta {
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.75rem;
         color: var(--color-text-secondary, var(--text-secondary));
         line-height: 1.5;
@@ -519,7 +531,7 @@
 
       .shadow-specimen-meta {
         text-align: center;
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.6875rem;
         color: var(--color-text-secondary, var(--text-secondary));
         line-height: 1.5;
@@ -551,7 +563,7 @@
       }
 
       .composed-specimen-label {
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.625rem;
         font-weight: 600;
         text-transform: uppercase;
@@ -688,7 +700,7 @@
          ========================================================================== */
 
       .fonts-css-block {
-        font-family: var(--font-mono, 'Victor Mono', ui-monospace, monospace);
+        font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.6875rem;
         line-height: 1.6;
         color: var(--color-text-secondary, var(--text-secondary));
@@ -741,11 +753,12 @@
 
     <!-- Main Content (hidden until ready) -->
     <div id="app-content" class="app-content">
-
       <!-- Theme Toggle (sticky) -->
       <div class="standards-theme-toggle">
         <span class="standards-theme-toggle-label">Theme</span>
-        <button class="standards-theme-btn is-active" data-theme="host">Host</button>
+        <button class="standards-theme-btn is-active" data-theme="host">
+          Host
+        </button>
         <button class="standards-theme-btn" data-theme="light">Light</button>
         <button class="standards-theme-btn" data-theme="dark">Dark</button>
       </div>
@@ -754,12 +767,10 @@
       <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
 
       <div class="standards-manual">
-
         <!-- Rendered content goes here -->
         <div id="host-styles-content">
           <div class="styles-empty">Waiting for host styles...</div>
         </div>
-
       </div>
 
       <!-- Footer nav -->
@@ -768,64 +779,72 @@
 
     <script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
     <script>
-      (function () {
-        'use strict';
+      ;(function () {
+        "use strict"
 
         // =====================================================================
         // Theme Override
         // =====================================================================
 
-        let themeOverride = 'host'; // 'host' | 'light' | 'dark'
-        let hostTheme = 'dark';
+        let themeOverride = "host" // 'host' | 'light' | 'dark'
+        let hostTheme = "dark"
 
         function getActiveTheme() {
-          return themeOverride === 'host' ? hostTheme : themeOverride;
+          return themeOverride === "host" ? hostTheme : themeOverride
         }
 
         function applyThemeOverride(mode) {
-          themeOverride = mode;
+          themeOverride = mode
 
           // Update toggle buttons
-          document.querySelectorAll('.standards-theme-btn').forEach(function (btn) {
-            btn.classList.toggle('is-active', btn.getAttribute('data-theme') === mode);
-          });
+          document
+            .querySelectorAll(".standards-theme-btn")
+            .forEach(function (btn) {
+              btn.classList.toggle(
+                "is-active",
+                btn.getAttribute("data-theme") === mode
+              )
+            })
 
           // Apply the resolved theme
-          var resolved = getActiveTheme();
-          MCPAppShell.setTheme(resolved);
-          document.documentElement.style.colorScheme = resolved;
+          var resolved = getActiveTheme()
+          MCPAppShell.setTheme(resolved)
+          document.documentElement.style.colorScheme = resolved
 
           // Re-render to update specimens
-          renderHostStyles();
+          renderHostStyles()
         }
 
         // Wire up toggle buttons
-        document.querySelectorAll('.standards-theme-btn').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            applyThemeOverride(btn.getAttribute('data-theme'));
-          });
-        });
+        document
+          .querySelectorAll(".standards-theme-btn")
+          .forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              applyThemeOverride(btn.getAttribute("data-theme"))
+            })
+          })
 
         // =====================================================================
         // Helpers
         // =====================================================================
 
-        var esc = MCPAppShell.escapeHtml;
+        var esc = MCPAppShell.escapeHtml
 
         /**
          * Returns black or white depending on which contrasts better
          * against the given hex color. Used for L/D labels on swatches.
          */
         function contrastColor(hex) {
-          hex = (hex || '').replace('#', '');
-          if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
-          if (hex.length !== 6) return '#000';
-          var r = parseInt(hex.substring(0,2), 16);
-          var g = parseInt(hex.substring(2,4), 16);
-          var b = parseInt(hex.substring(4,6), 16);
+          hex = (hex || "").replace("#", "")
+          if (hex.length === 3)
+            hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
+          if (hex.length !== 6) return "#000"
+          var r = parseInt(hex.substring(0, 2), 16)
+          var g = parseInt(hex.substring(2, 4), 16)
+          var b = parseInt(hex.substring(4, 6), 16)
           // Relative luminance (sRGB)
-          var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-          return lum > 0.5 ? '#000' : '#fff';
+          var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+          return lum > 0.5 ? "#000" : "#fff"
         }
 
         // =====================================================================
@@ -833,88 +852,149 @@
         // =====================================================================
 
         function renderColorSection(categories) {
-          var html = '';
-          html += sectionHeader('01', 'Color');
+          var html = ""
+          html += sectionHeader("01", "Color")
 
           // Background Colors
-          if (categories['Background Colors'] && categories['Background Colors'].length) {
-            html += subsection('Backgrounds', renderColorGrid(categories['Background Colors'], 'background'));
+          if (
+            categories["Background Colors"] &&
+            categories["Background Colors"].length
+          ) {
+            html += subsection(
+              "Backgrounds",
+              renderColorGrid(categories["Background Colors"], "background")
+            )
           }
 
           // Text Colors
-          if (categories['Text Colors'] && categories['Text Colors'].length) {
-            html += subsection('Text', renderColorGrid(categories['Text Colors'], 'text'));
+          if (categories["Text Colors"] && categories["Text Colors"].length) {
+            html += subsection(
+              "Text",
+              renderColorGrid(categories["Text Colors"], "text")
+            )
           }
 
           // Border Colors
-          if (categories['Border Colors'] && categories['Border Colors'].length) {
-            html += subsection('Borders', renderColorGrid(categories['Border Colors'], 'border'));
+          if (
+            categories["Border Colors"] &&
+            categories["Border Colors"].length
+          ) {
+            html += subsection(
+              "Borders",
+              renderColorGrid(categories["Border Colors"], "border")
+            )
           }
 
           // Ring Colors
-          if (categories['Ring Colors'] && categories['Ring Colors'].length) {
-            html += subsection('Rings', renderColorGrid(categories['Ring Colors'], 'ring'));
+          if (categories["Ring Colors"] && categories["Ring Colors"].length) {
+            html += subsection(
+              "Rings",
+              renderColorGrid(categories["Ring Colors"], "ring")
+            )
           }
 
-          return wrapSection(html);
+          return wrapSection(html)
         }
 
         function renderColorGrid(vars, type) {
-          var html = '<div class="color-grid">';
+          var html = '<div class="color-grid">'
           for (var i = 0; i < vars.length; i++) {
-            var varName = vars[i][0];
-            var value = vars[i][1];
-            html += renderColorSpecimen(varName, value, type);
+            var varName = vars[i][0]
+            var value = vars[i][1]
+            html += renderColorSpecimen(varName, value, type)
           }
-          html += '</div>';
-          return html;
+          html += "</div>"
+          return html
         }
 
         function renderColorSpecimen(varName, value, type) {
-          var ld = MCPAppShell.parseLightDark(value);
-          var lightVal = ld ? ld.light : value;
-          var darkVal = ld ? ld.dark : value;
+          var ld = MCPAppShell.parseLightDark(value)
+          var lightVal = ld ? ld.light : value
+          var darkVal = ld ? ld.dark : value
 
-          var html = '<div class="color-specimen">';
+          var html = '<div class="color-specimen">'
 
-          if (type === 'text') {
+          if (type === "text") {
             // "Aa" in live color + split light/dark color indicator
-            html += '<div class="color-specimen-text-preview">';
-            html += '<span class="color-specimen-text-preview-aa" style="color: var(' + varName + ');">Aa</span>';
-            html += '<div class="color-specimen-text-preview-split">';
-            html += '<div class="color-specimen-text-preview-split-half" style="background: ' + esc(lightVal) + '; color: ' + contrastColor(lightVal) + ';">L</div>';
-            html += '<div class="color-specimen-text-preview-split-half" style="background: ' + esc(darkVal) + '; color: ' + contrastColor(darkVal) + ';">D</div>';
-            html += '</div>';
-            html += '</div>';
-          } else if (type === 'border') {
-            html += '<div class="color-specimen-border-preview" style="border-color: var(' + varName + ');">';
-            html += '<div class="color-specimen-border-indicator is-light" style="background: ' + esc(lightVal) + ';"></div>';
-            html += '<div class="color-specimen-border-indicator is-dark" style="background: ' + esc(darkVal) + ';"></div>';
-            html += '</div>';
-          } else if (type === 'ring') {
-            html += '<div class="color-specimen-ring-preview" style="outline-color: var(' + varName + ');">';
-            html += '<div class="color-specimen-ring-indicator is-light" style="background: ' + esc(lightVal) + ';"></div>';
-            html += '<div class="color-specimen-ring-indicator is-dark" style="background: ' + esc(darkVal) + ';"></div>';
-            html += '</div>';
+            html += '<div class="color-specimen-text-preview">'
+            html +=
+              '<span class="color-specimen-text-preview-aa" style="color: var(' +
+              varName +
+              ');">Aa</span>'
+            html += '<div class="color-specimen-text-preview-split">'
+            html +=
+              '<div class="color-specimen-text-preview-split-half" style="background: ' +
+              esc(lightVal) +
+              "; color: " +
+              contrastColor(lightVal) +
+              ';">L</div>'
+            html +=
+              '<div class="color-specimen-text-preview-split-half" style="background: ' +
+              esc(darkVal) +
+              "; color: " +
+              contrastColor(darkVal) +
+              ';">D</div>'
+            html += "</div>"
+            html += "</div>"
+          } else if (type === "border") {
+            html +=
+              '<div class="color-specimen-border-preview" style="border-color: var(' +
+              varName +
+              ');">'
+            html +=
+              '<div class="color-specimen-border-indicator is-light" style="background: ' +
+              esc(lightVal) +
+              ';"></div>'
+            html +=
+              '<div class="color-specimen-border-indicator is-dark" style="background: ' +
+              esc(darkVal) +
+              ';"></div>'
+            html += "</div>"
+          } else if (type === "ring") {
+            html +=
+              '<div class="color-specimen-ring-preview" style="outline-color: var(' +
+              varName +
+              ');">'
+            html +=
+              '<div class="color-specimen-ring-indicator is-light" style="background: ' +
+              esc(lightVal) +
+              ';"></div>'
+            html +=
+              '<div class="color-specimen-ring-indicator is-dark" style="background: ' +
+              esc(darkVal) +
+              ';"></div>'
+            html += "</div>"
           } else {
             // background
-            html += '<div class="color-specimen-swatch">';
-            html += '<div class="color-specimen-swatch-half is-light" style="background: ' + lightVal + ';"></div>';
-            html += '<div class="color-specimen-swatch-half is-dark" style="background: ' + darkVal + ';"></div>';
-            html += '<div class="color-specimen-swatch-divider"></div>';
-            html += '</div>';
+            html += '<div class="color-specimen-swatch">'
+            html +=
+              '<div class="color-specimen-swatch-half is-light" style="background: ' +
+              lightVal +
+              ';"></div>'
+            html +=
+              '<div class="color-specimen-swatch-half is-dark" style="background: ' +
+              darkVal +
+              ';"></div>'
+            html += '<div class="color-specimen-swatch-divider"></div>'
+            html += "</div>"
           }
 
-          html += '<div class="color-specimen-meta">';
-          html += '<div class="color-specimen-var">' + esc(varName) + '</div>';
-          html += '<div class="color-specimen-values">';
-          html += '<span><span class="color-specimen-val-label">L </span>' + esc(lightVal) + '</span>';
-          html += '<span><span class="color-specimen-val-label">D </span>' + esc(darkVal) + '</span>';
-          html += '</div>';
-          html += '</div>';
+          html += '<div class="color-specimen-meta">'
+          html += '<div class="color-specimen-var">' + esc(varName) + "</div>"
+          html += '<div class="color-specimen-values">'
+          html +=
+            '<span><span class="color-specimen-val-label">L </span>' +
+            esc(lightVal) +
+            "</span>"
+          html +=
+            '<span><span class="color-specimen-val-label">D </span>' +
+            esc(darkVal) +
+            "</span>"
+          html += "</div>"
+          html += "</div>"
 
-          html += '</div>';
-          return html;
+          html += "</div>"
+          return html
         }
 
         // =====================================================================
@@ -922,106 +1002,167 @@
         // =====================================================================
 
         function renderTypographySection(categories, allVars) {
-          var html = '';
-          html += sectionHeader('02', 'Typography');
+          var html = ""
+          html += sectionHeader("02", "Typography")
 
           // Font Families
-          if (categories['Font Families'] && categories['Font Families'].length) {
-            html += subsection('Font Families', renderFontFamilies(categories['Font Families']));
+          if (
+            categories["Font Families"] &&
+            categories["Font Families"].length
+          ) {
+            html += subsection(
+              "Font Families",
+              renderFontFamilies(categories["Font Families"])
+            )
           }
 
           // Font Weights
-          if (categories['Font Weights'] && categories['Font Weights'].length) {
-            html += subsection('Font Weights', renderFontWeights(categories['Font Weights']));
+          if (categories["Font Weights"] && categories["Font Weights"].length) {
+            html += subsection(
+              "Font Weights",
+              renderFontWeights(categories["Font Weights"])
+            )
           }
 
           // Text Styles
-          if (categories['Text Styles'] && categories['Text Styles'].length) {
-            html += subsection('Type Scale — Text', renderTypeScale(categories['Text Styles'], allVars, false));
+          if (categories["Text Styles"] && categories["Text Styles"].length) {
+            html += subsection(
+              "Type Scale — Text",
+              renderTypeScale(categories["Text Styles"], allVars, false)
+            )
           }
 
           // Heading Styles
-          if (categories['Heading Styles'] && categories['Heading Styles'].length) {
-            html += subsection('Type Scale — Headings', renderTypeScale(categories['Heading Styles'], allVars, true));
+          if (
+            categories["Heading Styles"] &&
+            categories["Heading Styles"].length
+          ) {
+            html += subsection(
+              "Type Scale — Headings",
+              renderTypeScale(categories["Heading Styles"], allVars, true)
+            )
           }
 
-          return wrapSection(html);
+          return wrapSection(html)
         }
 
         function renderFontFamilies(vars) {
-          var pangram = 'The quick brown fox jumps over the lazy dog. 0123456789';
-          var html = '';
+          var pangram =
+            "The quick brown fox jumps over the lazy dog. 0123456789"
+          var html = ""
           for (var i = 0; i < vars.length; i++) {
-            var varName = vars[i][0];
-            var value = vars[i][1];
-            html += '<div class="font-specimen">';
-            html += '<div class="font-specimen-sample" style="font-family: var(' + varName + ');">' + pangram + '</div>';
-            html += '<div class="font-specimen-meta"><code>' + esc(varName) + '</code> — ' + esc(value) + '</div>';
-            html += '</div>';
+            var varName = vars[i][0]
+            var value = vars[i][1]
+            html += '<div class="font-specimen">'
+            html +=
+              '<div class="font-specimen-sample" style="font-family: var(' +
+              varName +
+              ');">' +
+              pangram +
+              "</div>"
+            html +=
+              '<div class="font-specimen-meta"><code>' +
+              esc(varName) +
+              "</code> — " +
+              esc(value) +
+              "</div>"
+            html += "</div>"
           }
-          return html;
+          return html
         }
 
         function renderFontWeights(vars) {
-          var html = '<div class="weight-grid">';
+          var html = '<div class="weight-grid">'
           for (var i = 0; i < vars.length; i++) {
-            var varName = vars[i][0];
-            var value = vars[i][1];
-            html += '<div class="weight-specimen">';
-            html += '<div class="weight-specimen-meta"><code>' + esc(varName) + '</code><span>' + esc(value) + '</span></div>';
-            html += '<div class="weight-specimen-preview" style="font-weight: var(' + varName + ');">The quick brown fox jumps over the lazy dog</div>';
-            html += '</div>';
+            var varName = vars[i][0]
+            var value = vars[i][1]
+            html += '<div class="weight-specimen">'
+            html +=
+              '<div class="weight-specimen-meta"><code>' +
+              esc(varName) +
+              "</code><span>" +
+              esc(value) +
+              "</span></div>"
+            html +=
+              '<div class="weight-specimen-preview" style="font-weight: var(' +
+              varName +
+              ');">The quick brown fox jumps over the lazy dog</div>'
+            html += "</div>"
           }
-          html += '</div>';
-          return html;
+          html += "</div>"
+          return html
         }
 
         function renderTypeScale(vars, allVars, isHeading) {
-          var sizeGroups = {};
-          var pattern = isHeading ? /--font-heading-([a-z0-9]+)-(size|line-height)/ : /--font-text-([a-z0-9]+)-(size|line-height)/;
+          var sizeGroups = {}
+          var pattern = isHeading
+            ? /--font-heading-([a-z0-9]+)-(size|line-height)/
+            : /--font-text-([a-z0-9]+)-(size|line-height)/
 
           for (var i = 0; i < vars.length; i++) {
-            var varName = vars[i][0];
-            var value = vars[i][1];
-            var match = varName.match(pattern);
+            var varName = vars[i][0]
+            var value = vars[i][1]
+            var match = varName.match(pattern)
             if (match) {
-              var sizeKey = match[1];
-              var propType = match[2];
-              if (!sizeGroups[sizeKey]) sizeGroups[sizeKey] = {};
-              sizeGroups[sizeKey][propType] = { varName: varName, value: value };
+              var sizeKey = match[1]
+              var propType = match[2]
+              if (!sizeGroups[sizeKey]) sizeGroups[sizeKey] = {}
+              sizeGroups[sizeKey][propType] = { varName: varName, value: value }
             }
           }
 
           var sizeOrder = isHeading
-            ? ['3xl', '2xl', 'xl', 'lg', 'md', 'sm', 'xs']
-            : ['lg', 'md', 'sm', 'xs'];
+            ? ["3xl", "2xl", "xl", "lg", "md", "sm", "xs"]
+            : ["lg", "md", "sm", "xs"]
 
-          var html = '<div class="type-scale-stack">';
+          var html = '<div class="type-scale-stack">'
 
           for (var s = 0; s < sizeOrder.length; s++) {
-            var key = sizeOrder[s];
-            var group = sizeGroups[key];
-            if (!group || !group.size) continue;
+            var key = sizeOrder[s]
+            var group = sizeGroups[key]
+            if (!group || !group.size) continue
 
-            var style = 'font-family: var(--font-sans); font-size: var(' + group.size.varName + ');';
-            if (group['line-height']) {
-              style += ' line-height: var(' + group['line-height'].varName + ');';
+            var style =
+              "font-family: var(--font-sans); font-size: var(" +
+              group.size.varName +
+              ");"
+            if (group["line-height"]) {
+              style +=
+                " line-height: var(" + group["line-height"].varName + ");"
             }
-            style += ' font-weight: ' + (isHeading ? 'var(--font-weight-bold, 700)' : 'var(--font-weight-normal, 400)') + ';';
+            style +=
+              " font-weight: " +
+              (isHeading
+                ? "var(--font-weight-bold, 700)"
+                : "var(--font-weight-normal, 400)") +
+              ";"
 
-            html += '<div class="type-scale-specimen">';
-            html += '<div class="type-scale-specimen-preview" style="' + style + '">Lorem ipsum dolor sit amet</div>';
-            html += '<div class="type-scale-specimen-meta">';
-            html += '<span><code>' + esc(group.size.varName) + '</code> ' + esc(group.size.value) + '</span>';
-            if (group['line-height']) {
-              html += '<span><code>' + esc(group['line-height'].varName) + '</code> ' + esc(group['line-height'].value) + '</span>';
+            html += '<div class="type-scale-specimen">'
+            html +=
+              '<div class="type-scale-specimen-preview" style="' +
+              style +
+              '">Lorem ipsum dolor sit amet</div>'
+            html += '<div class="type-scale-specimen-meta">'
+            html +=
+              "<span><code>" +
+              esc(group.size.varName) +
+              "</code> " +
+              esc(group.size.value) +
+              "</span>"
+            if (group["line-height"]) {
+              html +=
+                "<span><code>" +
+                esc(group["line-height"].varName) +
+                "</code> " +
+                esc(group["line-height"].value) +
+                "</span>"
             }
-            html += '</div>';
-            html += '</div>';
+            html += "</div>"
+            html += "</div>"
           }
 
-          html += '</div>';
-          return html;
+          html += "</div>"
+          return html
         }
 
         // =====================================================================
@@ -1029,59 +1170,75 @@
         // =====================================================================
 
         function renderStructureSection(categories) {
-          var html = '';
-          html += sectionHeader('03', 'Structure');
+          var html = ""
+          html += sectionHeader("03", "Structure")
 
-          var radiusVars = [];
-          var widthVars = [];
+          var radiusVars = []
+          var widthVars = []
 
-          if (categories['Border Radius']) {
-            for (var i = 0; i < categories['Border Radius'].length; i++) {
-              var v = categories['Border Radius'][i];
-              if (v[0].indexOf('--border-width') === 0) {
-                widthVars.push(v);
+          if (categories["Border Radius"]) {
+            for (var i = 0; i < categories["Border Radius"].length; i++) {
+              var v = categories["Border Radius"][i]
+              if (v[0].indexOf("--border-width") === 0) {
+                widthVars.push(v)
               } else {
-                radiusVars.push(v);
+                radiusVars.push(v)
               }
             }
           }
 
           if (radiusVars.length) {
-            html += subsection('Border Radius', renderRadiusGrid(radiusVars));
+            html += subsection("Border Radius", renderRadiusGrid(radiusVars))
           }
 
           if (widthVars.length) {
-            html += subsection('Border Width', renderBorderWidth(widthVars));
+            html += subsection("Border Width", renderBorderWidth(widthVars))
           }
 
-          return wrapSection(html);
+          return wrapSection(html)
         }
 
         function renderRadiusGrid(vars) {
-          var html = '<div class="radius-grid">';
+          var html = '<div class="radius-grid">'
           for (var i = 0; i < vars.length; i++) {
-            var varName = vars[i][0];
-            var value = vars[i][1];
-            html += '<div class="radius-specimen">';
-            html += '<div class="radius-specimen-box" style="border-radius: var(' + varName + ');"></div>';
-            html += '<div class="radius-specimen-meta"><code>' + esc(varName) + '</code>' + esc(value) + '</div>';
-            html += '</div>';
+            var varName = vars[i][0]
+            var value = vars[i][1]
+            html += '<div class="radius-specimen">'
+            html +=
+              '<div class="radius-specimen-box" style="border-radius: var(' +
+              varName +
+              ');"></div>'
+            html +=
+              '<div class="radius-specimen-meta"><code>' +
+              esc(varName) +
+              "</code>" +
+              esc(value) +
+              "</div>"
+            html += "</div>"
           }
-          html += '</div>';
-          return html;
+          html += "</div>"
+          return html
         }
 
         function renderBorderWidth(vars) {
-          var html = '';
+          var html = ""
           for (var i = 0; i < vars.length; i++) {
-            var varName = vars[i][0];
-            var value = vars[i][1];
-            html += '<div class="border-width-specimen">';
-            html += '<div class="border-width-specimen-box" style="border-width: var(' + varName + ');"></div>';
-            html += '<div class="border-width-specimen-meta"><code>' + esc(varName) + '</code><br>' + esc(value) + '</div>';
-            html += '</div>';
+            var varName = vars[i][0]
+            var value = vars[i][1]
+            html += '<div class="border-width-specimen">'
+            html +=
+              '<div class="border-width-specimen-box" style="border-width: var(' +
+              varName +
+              ');"></div>'
+            html +=
+              '<div class="border-width-specimen-meta"><code>' +
+              esc(varName) +
+              "</code><br>" +
+              esc(value) +
+              "</div>"
+            html += "</div>"
           }
-          return html;
+          return html
         }
 
         // =====================================================================
@@ -1089,23 +1246,31 @@
         // =====================================================================
 
         function renderShadowSection(categories) {
-          if (!categories['Shadows'] || !categories['Shadows'].length) return '';
+          if (!categories["Shadows"] || !categories["Shadows"].length) return ""
 
-          var html = '';
-          html += sectionHeader('04', 'Shadows');
+          var html = ""
+          html += sectionHeader("04", "Shadows")
 
-          html += '<div class="shadow-row">';
-          for (var i = 0; i < categories['Shadows'].length; i++) {
-            var varName = categories['Shadows'][i][0];
-            var value = categories['Shadows'][i][1];
-            html += '<div class="shadow-specimen">';
-            html += '<div class="shadow-specimen-card" style="box-shadow: var(' + varName + ');"></div>';
-            html += '<div class="shadow-specimen-meta"><code>' + esc(varName) + '</code>' + esc(value) + '</div>';
-            html += '</div>';
+          html += '<div class="shadow-row">'
+          for (var i = 0; i < categories["Shadows"].length; i++) {
+            var varName = categories["Shadows"][i][0]
+            var value = categories["Shadows"][i][1]
+            html += '<div class="shadow-specimen">'
+            html +=
+              '<div class="shadow-specimen-card" style="box-shadow: var(' +
+              varName +
+              ');"></div>'
+            html +=
+              '<div class="shadow-specimen-meta"><code>' +
+              esc(varName) +
+              "</code>" +
+              esc(value) +
+              "</div>"
+            html += "</div>"
           }
-          html += '</div>';
+          html += "</div>"
 
-          return wrapSection(html);
+          return wrapSection(html)
         }
 
         // =====================================================================
@@ -1113,53 +1278,59 @@
         // =====================================================================
 
         function renderComposedSection() {
-          var html = '';
-          html += sectionHeader('05', 'Composed Specimens');
+          var html = ""
+          html += sectionHeader("05", "Composed Specimens")
 
-          html += '<div class="composed-grid">';
+          html += '<div class="composed-grid">'
 
           // Card
-          html += '<div class="composed-specimen">';
-          html += '<div class="composed-specimen-label">Card</div>';
-          html += '<div class="composed-card">';
-          html += '<h4>Card Heading</h4>';
-          html += '<p>Body text demonstrating the secondary text color on a secondary background with medium shadow elevation.</p>';
-          html += '</div>';
-          html += '</div>';
+          html += '<div class="composed-specimen">'
+          html += '<div class="composed-specimen-label">Card</div>'
+          html += '<div class="composed-card">'
+          html += "<h4>Card Heading</h4>"
+          html +=
+            "<p>Body text demonstrating the secondary text color on a secondary background with medium shadow elevation.</p>"
+          html += "</div>"
+          html += "</div>"
 
           // Buttons
-          html += '<div class="composed-specimen">';
-          html += '<div class="composed-specimen-label">Buttons</div>';
-          html += '<div class="composed-buttons">';
-          html += '<div class="composed-btn is-primary">Primary</div>';
-          html += '<div class="composed-btn is-ghost">Ghost</div>';
-          html += '<div class="composed-btn is-danger">Danger</div>';
-          html += '<div class="composed-btn is-disabled">Disabled</div>';
-          html += '</div>';
-          html += '</div>';
+          html += '<div class="composed-specimen">'
+          html += '<div class="composed-specimen-label">Buttons</div>'
+          html += '<div class="composed-buttons">'
+          html += '<div class="composed-btn is-primary">Primary</div>'
+          html += '<div class="composed-btn is-ghost">Ghost</div>'
+          html += '<div class="composed-btn is-danger">Danger</div>'
+          html += '<div class="composed-btn is-disabled">Disabled</div>'
+          html += "</div>"
+          html += "</div>"
 
           // Form Input
-          html += '<div class="composed-specimen">';
-          html += '<div class="composed-specimen-label">Form Input</div>';
-          html += '<div class="composed-input-wrapper">';
-          html += '<input class="composed-input" type="text" placeholder="Placeholder text..." value="">';
-          html += '</div>';
-          html += '</div>';
+          html += '<div class="composed-specimen">'
+          html += '<div class="composed-specimen-label">Form Input</div>'
+          html += '<div class="composed-input-wrapper">'
+          html +=
+            '<input class="composed-input" type="text" placeholder="Placeholder text..." value="">'
+          html += "</div>"
+          html += "</div>"
 
           // Status Banners
-          html += '<div class="composed-specimen">';
-          html += '<div class="composed-specimen-label">Status Banners</div>';
-          html += '<div class="composed-banners">';
-          html += '<div class="composed-banner is-info">Info — Informational message</div>';
-          html += '<div class="composed-banner is-success">Success — Operation completed</div>';
-          html += '<div class="composed-banner is-warning">Warning — Proceed with caution</div>';
-          html += '<div class="composed-banner is-danger">Danger — Something went wrong</div>';
-          html += '</div>';
-          html += '</div>';
+          html += '<div class="composed-specimen">'
+          html += '<div class="composed-specimen-label">Status Banners</div>'
+          html += '<div class="composed-banners">'
+          html +=
+            '<div class="composed-banner is-info">Info — Informational message</div>'
+          html +=
+            '<div class="composed-banner is-success">Success — Operation completed</div>'
+          html +=
+            '<div class="composed-banner is-warning">Warning — Proceed with caution</div>'
+          html +=
+            '<div class="composed-banner is-danger">Danger — Something went wrong</div>'
+          html += "</div>"
+          html += "</div>"
 
-          html += '</div>';
+          html += "</div>"
 
-          return wrapSection(html);
+          return wrapSection(html)
         }
 
         // =====================================================================
@@ -1167,12 +1338,13 @@
         // =====================================================================
 
         function renderFontsCSSSection(styles) {
-          if (!styles.css || !styles.css.fonts) return '';
+          if (!styles.css || !styles.css.fonts) return ""
 
-          var html = '';
-          html += sectionHeader('06', 'Fonts CSS');
-          html += '<pre class="fonts-css-block">' + esc(styles.css.fonts) + '</pre>';
-          return wrapSection(html);
+          var html = ""
+          html += sectionHeader("06", "Fonts CSS")
+          html +=
+            '<pre class="fonts-css-block">' + esc(styles.css.fonts) + "</pre>"
+          return wrapSection(html)
         }
 
         // =====================================================================
@@ -1180,21 +1352,31 @@
         // =====================================================================
 
         function sectionHeader(number, title) {
-          return '<div class="standards-section-header">' +
-            '<span class="standards-section-number">§' + number + '</span>' +
-            '<h2 class="standards-section-title">' + esc(title) + '</h2>' +
-            '</div>';
+          return (
+            '<div class="standards-section-header">' +
+            '<span class="standards-section-number">§' +
+            number +
+            "</span>" +
+            '<h2 class="standards-section-title">' +
+            esc(title) +
+            "</h2>" +
+            "</div>"
+          )
         }
 
         function subsection(title, content) {
-          return '<div class="standards-subsection">' +
-            '<h3 class="standards-subsection-title">' + esc(title) + '</h3>' +
+          return (
+            '<div class="standards-subsection">' +
+            '<h3 class="standards-subsection-title">' +
+            esc(title) +
+            "</h3>" +
             content +
-            '</div>';
+            "</div>"
+          )
         }
 
         function wrapSection(content) {
-          return '<section class="standards-section">' + content + '</section>';
+          return '<section class="standards-section">' + content + "</section>"
         }
 
         // =====================================================================
@@ -1202,34 +1384,44 @@
         // =====================================================================
 
         function renderHostStyles() {
-          var container = document.getElementById('host-styles-content');
-          var hostInfo = MCPAppShell.getHostInfo();
-          var styles = hostInfo && hostInfo.hostContext ? hostInfo.hostContext.styles : null;
+          var container = document.getElementById("host-styles-content")
+          var hostInfo = MCPAppShell.getHostInfo()
+          var styles =
+            hostInfo && hostInfo.hostContext
+              ? hostInfo.hostContext.styles
+              : null
 
-          if (!container) return;
+          if (!container) return
 
-          if (!styles || !styles.variables || Object.keys(styles.variables).length === 0) {
-            container.innerHTML = '<div class="styles-empty">No styles provided by host</div>';
-            MCPAppShell.sendSizeChanged();
-            return;
+          if (
+            !styles ||
+            !styles.variables ||
+            Object.keys(styles.variables).length === 0
+          ) {
+            container.innerHTML =
+              '<div class="styles-empty">No styles provided by host</div>'
+            MCPAppShell.sendSizeChanged()
+            return
           }
 
           // Inject variables as CSS custom properties
-          MCPAppShell.injectStyleVariables(styles.variables);
+          MCPAppShell.injectStyleVariables(styles.variables)
 
-          var categories = MCPAppShell.categorizeStyleVariables(styles.variables);
-          var allVars = styles.variables;
+          var categories = MCPAppShell.categorizeStyleVariables(
+            styles.variables
+          )
+          var allVars = styles.variables
 
-          var html = '';
-          html += renderColorSection(categories);
-          html += renderTypographySection(categories, allVars);
-          html += renderStructureSection(categories);
-          html += renderShadowSection(categories);
-          html += renderComposedSection();
-          html += renderFontsCSSSection(styles);
+          var html = ""
+          html += renderColorSection(categories)
+          html += renderTypographySection(categories, allVars)
+          html += renderStructureSection(categories)
+          html += renderShadowSection(categories)
+          html += renderComposedSection()
+          html += renderFontsCSSSection(styles)
 
-          container.innerHTML = html;
-          MCPAppShell.sendSizeChanged();
+          container.innerHTML = html
+          MCPAppShell.sendSizeChanged()
         }
 
         // =====================================================================
@@ -1237,44 +1429,44 @@
         // =====================================================================
 
         MCPAppShell.initialize({
-          clientName: 'Host Styles Inspector',
-          clientVersion: '1.0.0',
+          clientName: "Host Styles Inspector",
+          clientVersion: "1.0.0",
           onInitialized: function (result) {
             if (result.hostContext && result.hostContext.theme) {
-              hostTheme = result.hostContext.theme;
+              hostTheme = result.hostContext.theme
             }
             // Update subtitle
-            var subtitle = document.getElementById('host-info-subtitle');
+            var subtitle = document.getElementById("host-info-subtitle")
             if (subtitle && result.hostInfo) {
-              var name = result.hostInfo.name || 'Unknown Host';
-              var version = result.hostInfo.version || '';
-              var hostDisplay = version ? name + ' v' + version : name;
-              subtitle.textContent = 'Current host: ' + hostDisplay;
+              var name = result.hostInfo.name || "Unknown Host"
+              var version = result.hostInfo.version || ""
+              var hostDisplay = version ? name + " v" + version : name
+              subtitle.textContent = "Current host: " + hostDisplay
             }
-          }
-        });
+          },
+        })
 
         // Listen for tool result to render content
-        window.addEventListener('mcp-tool-result', function () {
-          renderHostStyles();
-          MCPAppShell.setupInspectorFooter('inspect-host-styles');
-        });
+        window.addEventListener("mcp-tool-result", function () {
+          renderHostStyles()
+          MCPAppShell.setupInspectorFooter("inspect-host-styles")
+        })
 
         // Listen for host context changes
-        window.addEventListener('mcp-host-context-changed', function (e) {
+        window.addEventListener("mcp-host-context-changed", function (e) {
           if (MCPAppShell.isReady()) {
             if (e.detail && e.detail.theme) {
-              hostTheme = e.detail.theme;
+              hostTheme = e.detail.theme
             }
             // If in host mode, follow the host theme
-            if (themeOverride === 'host') {
-              MCPAppShell.setTheme(hostTheme);
-              document.documentElement.style.colorScheme = hostTheme;
+            if (themeOverride === "host") {
+              MCPAppShell.setTheme(hostTheme)
+              document.documentElement.style.colorScheme = hostTheme
             }
-            renderHostStyles();
+            renderHostStyles()
           }
-        });
-      })();
+        })
+      })()
     </script>
   </body>
 </html>
