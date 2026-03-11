@@ -32,16 +32,11 @@
          ========================================================================== */
 
       .standards-theme-toggle {
-        position: sticky;
-        top: 0;
-        z-index: 100;
         display: flex;
         align-items: center;
         justify-content: flex-end;
         gap: 0.25rem;
-        padding: 0.625rem 2rem;
-        background: var(--color-background-primary, var(--bg-primary));
-        border-bottom: 1px solid var(--color-border-primary, var(--border));
+        margin-bottom: 3rem;
         font-family: var(--font-mono, "Victor Mono", ui-monospace, monospace);
         font-size: 0.6875rem;
         letter-spacing: 0.03em;
@@ -731,7 +726,7 @@
         }
 
         .standards-theme-toggle {
-          padding: 0.5rem 1rem;
+          margin-bottom: 2rem;
         }
 
         .color-grid {
@@ -753,20 +748,19 @@
 
     <!-- Main Content (hidden until ready) -->
     <div id="app-content" class="app-content">
-      <!-- Theme Toggle (sticky) -->
-      <div class="standards-theme-toggle">
-        <span class="standards-theme-toggle-label">Theme</span>
-        <button class="standards-theme-btn is-active" data-theme="host">
-          Host
-        </button>
-        <button class="standards-theme-btn" data-theme="light">Light</button>
-        <button class="standards-theme-btn" data-theme="dark">Dark</button>
-      </div>
-
       <h1>Host Styles Inspector</h1>
       <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
 
       <div class="standards-manual">
+        <!-- Theme Toggle -->
+        <div class="standards-theme-toggle">
+          <span class="standards-theme-toggle-label">Theme</span>
+          <button class="standards-theme-btn is-active" data-theme="host">
+            Host
+          </button>
+          <button class="standards-theme-btn" data-theme="light">Light</button>
+          <button class="standards-theme-btn" data-theme="dark">Dark</button>
+        </div>
         <!-- Rendered content goes here -->
         <div id="host-styles-content">
           <div class="styles-empty">Waiting for host styles...</div>
