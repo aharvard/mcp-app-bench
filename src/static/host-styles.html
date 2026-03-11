@@ -23,6 +23,16 @@
         color: var(--color-text-primary, var(--text-primary));
       }
 
+      /* Allow scrolling in fullscreen mode — this page has long-form content */
+      html,
+      body.display-mode-fullscreen {
+        overflow: auto;
+      }
+
+      body.display-mode-fullscreen {
+        height: auto;
+      }
+
       .app-content.is-ready {
         display: block;
       }
