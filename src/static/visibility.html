@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css?v={{CACHE_HASH}}">
+    <style>
+      .visibility-body {
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.8125rem;
+        line-height: 1.8;
+        color: var(--text-secondary);
+        letter-spacing: 0.01em;
+      }
+      .visibility-body code {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 0.1em 0.4em;
+        font-size: 0.75rem;
+      }
+      .theme-light .visibility-body code {
+        background: rgba(0, 0, 0, 0.04);
+      }
+      .visibility-body ol {
+        margin: 0;
+        padding-left: 1.5em;
+      }
+      .visibility-body ol li {
+        padding: 0.2em 0;
+      }
+      .visibility-body strong {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading State -->
+    <div id="app-loading" class="app-loading">
+      <div class="app-loading-spinner"></div>
+      <div class="app-loading-text">Loading visibility inspector...</div>
+    </div>
+
+    <!-- Main Content (hidden until ready) -->
+    <div id="app-content" class="app-content">
+      <h1>Tool Visibility Inspector</h1>
+      <p class="host-info-subtitle">Tests that hosts respect <code>_meta.ui.visibility</code> on tools</p>
+
+      <div class="terminal">
+        <div class="terminal-grid">
+
+          <div class="terminal-section">
+            <h2>Registered Visibility Test Tools</h2>
+            <p class="visibility-body" style="margin-bottom: 12px;">Each tool below has a different <code>visibility</code> value. Only tools that include <code>"model"</code> should be sent to the LLM.</p>
+
+            <div class="host-data-list">
+              <div class="host-data-row">
+                <span class="host-data-key"><span class="host-data-key-segment">visibility-both</span></span>
+                <span class="host-data-value-cell"><code>["model", "app"]</code> — <strong>✅ Model SHOULD see this</strong></span>
+              </div>
+              <div class="host-data-row">
+                <span class="host-data-key"><span class="host-data-key-segment">visibility-app-only</span></span>
+                <span class="host-data-value-cell"><code>["app"]</code> — <strong>🚫 Model should NOT see this</strong></span>
+              </div>
+              <div class="host-data-row">
+                <span class="host-data-key"><span class="host-data-key-segment">visibility-model-only</span></span>
+                <span class="host-data-value-cell"><code>["model"]</code> — <strong>✅ Model SHOULD see this</strong></span>
+              </div>
+              <div class="host-data-row">
+                <span class="host-data-key"><span class="host-data-key-segment">visibility-default</span></span>
+                <span class="host-data-value-cell"><em>(no visibility field)</em> — <strong>✅ Model SHOULD see this</strong> (default)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="terminal-section">
+            <h2>How to Test</h2>
+            <div class="visibility-body">
+              <ol>
+                <li>Ask: <em>"List your visibility- tools"</em></li>
+                <li>Expect: <code>visibility-both</code>, <code>visibility-model-only</code>, <code>visibility-default</code></li>
+                <li>Missing: <code>visibility-app-only</code> (hidden from model)</li>
+                <li>Verify: asking the model to call <code>visibility-app-only</code> should fail</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="terminal-section">
+            <h2>App-Only Tool Test</h2>
+            <p class="visibility-body" style="margin-bottom: 12px;">Call the app-only tool directly from this UI — no model involved.</p>
+            <button id="call-app-only-btn" style="padding: 8px 16px; cursor: pointer; border-radius: 4px; border: 1px solid var(--color-border-primary, #666); background: var(--color-background-secondary, #333); color: var(--color-text-primary, #fff);">
+              Call visibility-app-only
+            </button>
+            <div id="app-only-result" style="margin-top: 12px; font-family: var(--font-mono, monospace); font-size: 13px; white-space: pre-wrap;"></div>
+          </div>
+
+        </div>
+        <div id="inspector-footer" class="inspector-footer"></div>
+      </div>
+    </div>
+
+    <script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
+    <script>
+      (function () {
+        MCPAppShell.initialize({
+          clientName: 'Visibility Inspector',
+          clientVersion: '1.0.0',
+          onInitialized: function (result) {
+            MCPAppShell.setupInspectorFooter('inspect-visibility');
+          }
+        });
+
+        // Listen for tool result to show content
+        window.addEventListener('mcp-tool-result', function () {
+          MCPAppShell.sendSizeChanged();
+        });
+
+        // App-only tool call button
+        var btn = document.getElementById('call-app-only-btn');
+        var resultEl = document.getElementById('app-only-result');
+
+        btn.addEventListener('click', function () {
+          resultEl.textContent = 'Calling visibility-app-only via host proxy...';
+
+          // Use tools/call through the host's serverTools proxy
+          MCPAppShell.sendRequest('tools/call', {
+            name: 'visibility-app-only',
+            arguments: {}
+          })
+            .then(function (result) {
+              resultEl.textContent = '✅ Success: ' + JSON.stringify(result, null, 2);
+              MCPAppShell.sendSizeChanged();
+            })
+            .catch(function (err) {
+              resultEl.textContent = '❌ Error: ' + (err.message || JSON.stringify(err));
+              MCPAppShell.sendSizeChanged();
+            });
+        });
+      })();
+    </script>
+  </body>
+</html>

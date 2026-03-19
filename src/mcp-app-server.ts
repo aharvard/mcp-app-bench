@@ -23,6 +23,7 @@ import {
   INSPECT_DISPLAY_MODES_INLINE_PIP_URI,
   INSPECT_DISPLAY_MODES_INLINE_FULLSCREEN_URI,
   INSPECT_TRANSPARENCY_URI,
+  INSPECT_VISIBILITY_URI,
 } from "./utils/constants.js"
 import { loadAppHtml } from "./utils/load-app-html.js"
 
@@ -661,6 +662,198 @@ export function initMcpAppServer(): McpServer {
         },
       }
     }
+  )
+
+  // ==========================================================================
+  // Visibility Inspector - Tests _meta.ui.visibility filtering
+  // ==========================================================================
+
+  // Visibility inspector resource
+  server.registerResource(
+    "inspect-visibility",
+    INSPECT_VISIBILITY_URI,
+    {
+      title: "Visibility Inspector",
+      description:
+        "Test that the host respects _meta.ui.visibility on tools, hiding app-only tools from the model",
+      mimeType: MCP_APPS_MIME_TYPE,
+    },
+    async () => ({
+      contents: [
+        {
+          uri: INSPECT_VISIBILITY_URI,
+          mimeType: MCP_APPS_MIME_TYPE,
+          text: loadAppHtml("visibility"),
+          _meta: {
+            ui: {
+              prefersBorder: true,
+              csp: {
+                resourceDomains: [
+                  BASE_URL,
+                  "https://fonts.googleapis.com",
+                  "https://fonts.gstatic.com",
+                ],
+              },
+            },
+          },
+        },
+      ],
+    })
+  )
+
+  // Visibility inspector launcher tool
+  server.registerTool(
+    "inspect-visibility",
+    {
+      title: "Visibility Inspector",
+      description:
+        "Open the visibility inspector to test _meta.ui.visibility filtering",
+      inputSchema: {},
+      outputSchema: {
+        timestamp: z.string().describe("The timestamp of the inspection"),
+      },
+      _meta: {
+        ui: {
+          resourceUri: INSPECT_VISIBILITY_URI,
+        },
+      },
+    },
+    async () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Visibility Inspector loaded. This page tests that hosts correctly filter tools based on _meta.ui.visibility.`,
+          },
+        ],
+        structuredContent: {
+          timestamp: new Date().toISOString(),
+        },
+      }
+    }
+  )
+
+  // Tool with visibility: ["model", "app"] (explicit default — model SHOULD see)
+  server.registerTool(
+    "visibility-both",
+    {
+      title: "Visibility Test: Model + App",
+      description:
+        "Test tool with visibility ['model', 'app']. The model SHOULD be able to see and call this tool.",
+      inputSchema: {},
+      outputSchema: {
+        visibility: z.array(z.string()),
+        timestamp: z.string(),
+      },
+      _meta: {
+        ui: {
+          visibility: ["model", "app"],
+        },
+      },
+    },
+    async () => ({
+      content: [
+        {
+          type: "text",
+          text: "visibility-both called successfully. This tool is visible to both model and app.",
+        },
+      ],
+      structuredContent: {
+        visibility: ["model", "app"],
+        timestamp: new Date().toISOString(),
+      },
+    })
+  )
+
+  // Tool with visibility: ["app"] (app-only — model should NOT see)
+  server.registerTool(
+    "visibility-app-only",
+    {
+      title: "Visibility Test: App Only",
+      description:
+        "Test tool with visibility ['app']. The model should NOT see this tool. Only the app UI can call it.",
+      inputSchema: {},
+      outputSchema: {
+        visibility: z.array(z.string()),
+        timestamp: z.string(),
+      },
+      _meta: {
+        ui: {
+          visibility: ["app"],
+        },
+      },
+    },
+    async () => ({
+      content: [
+        {
+          type: "text",
+          text: "visibility-app-only called successfully. If the model called this, the host has a bug!",
+        },
+      ],
+      structuredContent: {
+        visibility: ["app"],
+        timestamp: new Date().toISOString(),
+      },
+    })
+  )
+
+  // Tool with visibility: ["model"] (model-only — model SHOULD see, app should NOT call)
+  server.registerTool(
+    "visibility-model-only",
+    {
+      title: "Visibility Test: Model Only",
+      description:
+        "Test tool with visibility ['model']. The model SHOULD see this. The app UI should NOT be able to call it.",
+      inputSchema: {},
+      outputSchema: {
+        visibility: z.array(z.string()),
+        timestamp: z.string(),
+      },
+      _meta: {
+        ui: {
+          visibility: ["model"],
+        },
+      },
+    },
+    async () => ({
+      content: [
+        {
+          type: "text",
+          text: "visibility-model-only called successfully. This tool is visible to the model only.",
+        },
+      ],
+      structuredContent: {
+        visibility: ["model"],
+        timestamp: new Date().toISOString(),
+      },
+    })
+  )
+
+  // Tool with NO visibility field (defaults to ["model", "app"] — model SHOULD see)
+  server.registerTool(
+    "visibility-default",
+    {
+      title: "Visibility Test: Default (no visibility field)",
+      description:
+        "Test tool with no visibility field. Per spec, defaults to ['model', 'app']. The model SHOULD see this.",
+      inputSchema: {},
+      outputSchema: {
+        visibility: z.string(),
+        timestamp: z.string(),
+      },
+    },
+    async () => ({
+      content: [
+        {
+          type: "text",
+          text: "visibility-default called successfully. No visibility field means default: visible to both.",
+        },
+      ],
+      structuredContent: {
+        visibility: "default (no _meta.ui.visibility field)",
+        timestamp: new Date().toISOString(),
+      },
+    })
   )
 
   // Utility tool: Get Server Time
