@@ -28,6 +28,8 @@ export const INSPECT_DISPLAY_MODES_INLINE_PIP_URI =
   `${MCP_APPS_UI_RESOURCE_SCHEME}inspect-display-modes-inline-pip` as const
 export const INSPECT_DISPLAY_MODES_INLINE_FULLSCREEN_URI =
   `${MCP_APPS_UI_RESOURCE_SCHEME}inspect-display-modes-inline-fullscreen` as const
+export const INSPECT_DISPLAY_MODES_UNDECLARED_URI =
+  `${MCP_APPS_UI_RESOURCE_SCHEME}inspect-display-modes-undeclared` as const
 export const INSPECT_TRANSPARENCY_URI =
   `${MCP_APPS_UI_RESOURCE_SCHEME}inspect-transparency` as const
 export const INSPECT_VISIBILITY_URI =

@@ -15,11 +15,23 @@
 
     <!-- Main Content (hidden until ready) -->
     <div id="app-content" class="app-content">
-      <h1>Display Modes: Inline + PiP</h1>
+      <h1>Display Modes: Undeclared</h1>
       <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
       
       <div class="terminal">
         <div class="terminal-grid">
+          <!-- Explanation Section -->
+          <div class="terminal-section">
+            <h2>About This Test</h2>
+            <p class="dm-description">
+              This inspector does <strong>not</strong> declare <code>fullscreen</code> or <code>pip</code> in
+              <code>appCapabilities.availableDisplayModes</code> during <code>ui/initialize</code>.
+              It only declares <code>inline</code>. However, the UI below still renders buttons to
+              request those modes. This tests that the host correctly gates display mode controls
+              based on what the app declared, not what the app's UI happens to render.
+            </p>
+          </div>
+
           <!-- Current State Section -->
           <div class="terminal-section">
             <h2>Current State</h2>
@@ -34,7 +46,7 @@
               </div>
               <div class="dm-state-row">
                 <span class="dm-state-label">App Declared Modes</span>
-                <span class="dm-state-value" id="dm-app-modes">inline, fullscreen, pip</span>
+                <span class="dm-state-value is-missing" id="dm-app-modes">(undefined)</span>
               </div>
             </div>
           </div>
@@ -44,7 +56,8 @@
             <h2>Request Display Mode</h2>
             <p class="dm-description">
               Click a button to send a <code>ui/request-display-mode</code> request to the host.
-              The host will respond with the actual mode set (which may differ from the requested mode).
+              Since this app only declared <code>inline</code>, the host should reject or ignore
+              requests for <code>fullscreen</code> and <code>pip</code>.
             </p>
             <div class="dm-controls">
               <button class="dm-mode-btn" data-mode="inline" id="btn-mode-inline">
@@ -83,7 +96,9 @@
         var ALL_MODES = ['inline', 'fullscreen', 'pip'];
         var currentMode = null;
         var hostAvailableModes = null;
-        var appDeclaredModes = ['inline', 'pip'];
+        // Intentionally undefined — tests that the host handles a missing
+        // availableDisplayModes gracefully and still allows mode transitions.
+        var appDeclaredModes = undefined;
         var logEntries = [];
 
         // ====================================================================
@@ -120,8 +135,8 @@
         function updateAppModesDisplay() {
           var el = document.getElementById('dm-app-modes');
           if (!el) return;
-          el.textContent = appDeclaredModes.join(', ');
-          el.className = 'dm-state-value is-active';
+          el.textContent = appDeclaredModes ? appDeclaredModes.join(', ') : '(undefined)';
+          el.className = appDeclaredModes ? 'dm-state-value is-active' : 'dm-state-value is-missing';
         }
 
         function updateButtons() {
@@ -136,22 +151,11 @@
               btn.classList.remove('is-active');
             }
 
-            // Check if host supports this mode
-            if (hostAvailableModes && hostAvailableModes.indexOf(mode) === -1) {
-              btn.classList.add('is-unavailable');
-              btn.title = 'Not available on this host';
-            } else {
-              btn.classList.remove('is-unavailable');
-              btn.title = '';
-            }
-
-            // Disable buttons for modes the app didn't declare
-            if (appDeclaredModes.indexOf(mode) === -1) {
-              btn.classList.add('is-undeclared');
-              btn.title = 'Not declared by this app';
-            } else {
-              btn.classList.remove('is-undeclared');
-            }
+            // All buttons stay fully active — the point of this test is that
+            // the app renders functional controls for modes it didn't declare,
+            // and the host should be the one gating the behavior.
+            btn.classList.remove('is-unavailable', 'is-undeclared');
+            btn.title = '';
           });
         }
 
@@ -237,10 +241,10 @@
         // ====================================================================
 
         MCPAppShell.initialize({
-          title: 'Display Modes: Inline + PiP',
-          clientName: 'Display Modes Inspector',
+          title: 'Display Modes: Undeclared',
+          clientName: 'Display Modes Inspector (Undeclared)',
           clientVersion: '1.0.0',
-          availableDisplayModes: appDeclaredModes,
+          availableDisplayModes: null,
           onInitialized: function (result) {
             if (result.hostContext) {
               if (result.hostContext.displayMode) {
@@ -256,7 +260,7 @@
 
         window.addEventListener('mcp-tool-result', function (e) {
           refreshAll();
-          MCPAppShell.setupInspectorFooter('inspect-display-modes');
+          MCPAppShell.setupInspectorFooter('inspect-display-modes-undeclared');
         });
 
         // Listen for host context changes (display mode may change externally)

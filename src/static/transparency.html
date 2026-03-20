@@ -277,7 +277,7 @@
         sendRequest('ui/initialize', {
           protocolVersion: '2025-03-26',
           appInfo: { name: 'Transparency Inspector', version: '1.0.0' },
-          appCapabilities: {}
+          appCapabilities: { title: 'Transparency' }
         }).then(function (result) {
           if (result && result.hostContext && result.hostContext.theme) {
             hostTheme = result.hostContext.theme;

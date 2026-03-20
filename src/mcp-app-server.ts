@@ -22,6 +22,7 @@ import {
   INSPECT_DISPLAY_MODES_URI,
   INSPECT_DISPLAY_MODES_INLINE_PIP_URI,
   INSPECT_DISPLAY_MODES_INLINE_FULLSCREEN_URI,
+  INSPECT_DISPLAY_MODES_UNDECLARED_URI,
   INSPECT_TRANSPARENCY_URI,
   INSPECT_VISIBILITY_URI,
 } from "./utils/constants.js"
@@ -590,6 +591,71 @@ export function initMcpAppServer(): McpServer {
           {
             type: "text",
             text: `Display Modes Inspector loaded. Declared modes: inline, fullscreen`,
+          },
+        ],
+        structuredContent: {
+          timestamp: new Date().toISOString(),
+        },
+      }
+    }
+  )
+
+  // Display Modes inspector resource (undeclared — only declares inline, but UI has fullscreen/pip buttons)
+  server.registerResource(
+    "inspect-display-modes-undeclared",
+    INSPECT_DISPLAY_MODES_UNDECLARED_URI,
+    {
+      title: "Display Modes Inspector (Undeclared)",
+      description:
+        "Test that the host respects declared modes — this app only declares inline but renders fullscreen/pip buttons",
+      mimeType: MCP_APPS_MIME_TYPE,
+    },
+    async () => ({
+      contents: [
+        {
+          uri: INSPECT_DISPLAY_MODES_UNDECLARED_URI,
+          mimeType: MCP_APPS_MIME_TYPE,
+          text: loadAppHtml("display-modes-undeclared"),
+          _meta: {
+            ui: {
+              prefersBorder: true,
+              csp: {
+                resourceDomains: [
+                  BASE_URL,
+                  "https://fonts.googleapis.com",
+                  "https://fonts.gstatic.com",
+                ],
+              },
+            },
+          },
+        },
+      ],
+    })
+  )
+
+  // Display Modes inspector tool (undeclared — only declares inline, but UI has fullscreen/pip buttons)
+  server.registerTool(
+    "inspect-display-modes-undeclared",
+    {
+      title: "Display Modes Inspector (Undeclared)",
+      description:
+        "Test that the host respects declared modes — this app only declares inline but renders fullscreen/pip buttons",
+      inputSchema: {},
+      outputSchema: {
+        timestamp: z.string().describe("The timestamp of the inspection"),
+      },
+      _meta: {
+        ui: {
+          resourceUri: INSPECT_DISPLAY_MODES_UNDECLARED_URI,
+        },
+      },
+    },
+    async () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Display Modes Inspector loaded. Declared modes: inline only (fullscreen/pip undeclared but UI has buttons)`,
           },
         ],
         structuredContent: {
