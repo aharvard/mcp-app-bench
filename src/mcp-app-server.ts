@@ -25,6 +25,7 @@ import {
   INSPECT_DISPLAY_MODES_UNDECLARED_URI,
   INSPECT_TRANSPARENCY_URI,
   INSPECT_VISIBILITY_URI,
+  INSPECT_MODEL_CONTEXT_URI,
 } from "./utils/constants.js"
 import { loadAppHtml } from "./utils/load-app-html.js"
 
@@ -920,6 +921,73 @@ export function initMcpAppServer(): McpServer {
         timestamp: new Date().toISOString(),
       },
     })
+  )
+
+  // ==========================================================================
+  // Model Context Inspector
+  // ==========================================================================
+
+  server.registerResource(
+    "inspect-model-context",
+    INSPECT_MODEL_CONTEXT_URI,
+    {
+      title: "Model Context Inspector",
+      description:
+        "Test ui/update-model-context — send context updates from the app to the host model",
+      mimeType: MCP_APPS_MIME_TYPE,
+    },
+    async () => ({
+      contents: [
+        {
+          uri: INSPECT_MODEL_CONTEXT_URI,
+          mimeType: MCP_APPS_MIME_TYPE,
+          text: loadAppHtml("model-context"),
+          _meta: {
+            ui: {
+              prefersBorder: true,
+              csp: {
+                resourceDomains: [
+                  BASE_URL,
+                  "https://fonts.googleapis.com",
+                  "https://fonts.gstatic.com",
+                ],
+              },
+            },
+          },
+        },
+      ],
+    })
+  )
+
+  server.registerTool(
+    "inspect-model-context",
+    {
+      title: "Model Context Inspector",
+      description:
+        "Test ui/update-model-context — send context updates from the app to the host model",
+      inputSchema: {},
+      outputSchema: {
+        timestamp: z.string().describe("The timestamp of the inspection"),
+      },
+      _meta: {
+        ui: {
+          resourceUri: INSPECT_MODEL_CONTEXT_URI,
+        },
+      },
+    },
+    async () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Model Context Inspector loaded. Use the counter or manual form to send ui/update-model-context requests.`,
+          },
+        ],
+        structuredContent: {
+          timestamp: new Date().toISOString(),
+        },
+      }
+    }
   )
 
   // Utility tool: Get Server Time

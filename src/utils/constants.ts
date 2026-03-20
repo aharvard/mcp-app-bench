@@ -35,4 +35,7 @@ export const INSPECT_TRANSPARENCY_URI =
 export const INSPECT_VISIBILITY_URI =
   `${MCP_APPS_UI_RESOURCE_SCHEME}inspect-visibility` as const
 
+export const INSPECT_MODEL_CONTEXT_URI =
+  `${MCP_APPS_UI_RESOURCE_SCHEME}inspect-model-context` as const
+
 export const APP_ICON = `${BASE_URL}/assets/icon.svg` as const

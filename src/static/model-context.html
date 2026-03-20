@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css?v={{CACHE_HASH}}">
+    <style>
+      /* Counter Demo */
+      .counter-demo {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+      .counter-value {
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 1.75rem;
+        font-weight: 700;
+        min-width: 3.5rem;
+        text-align: center;
+        color: var(--text-primary);
+      }
+      .counter-btns {
+        display: flex;
+        gap: 0.375rem;
+      }
+
+      /* Manual Send — two-column layout matching messaging inspector */
+      .manual-send-layout {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        min-height: 200px;
+      }
+      .manual-send-sidebar {
+        padding: 1rem;
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .manual-send-sidebar-heading {
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin: 0 0 0.75rem;
+      }
+      .manual-send-sidebar-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .manual-send-editor {
+        display: flex;
+        flex-direction: column;
+      }
+      .manual-send-field {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        border-bottom: 1px solid var(--border);
+      }
+      .manual-send-field:last-of-type {
+        border-bottom: none;
+      }
+      .manual-send-field-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.625rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .theme-light .manual-send-field-header {
+        background: rgba(0, 0, 0, 0.02);
+      }
+      .manual-send-field-label {
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .manual-send-field-hint {
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.625rem;
+        color: var(--text-secondary);
+        opacity: 0.5;
+      }
+      .manual-send-field textarea {
+        flex: 1;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        background: transparent;
+        color: var(--text-primary);
+        border: none;
+        padding: 0.75rem 1rem;
+        resize: none;
+        min-height: 4.5rem;
+      }
+      .manual-send-field textarea::placeholder {
+        color: var(--text-secondary);
+        opacity: 0.35;
+      }
+      .manual-send-field textarea:focus {
+        outline: none;
+      }
+      .manual-send-actions {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-top: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .theme-light .manual-send-actions {
+        background: rgba(0, 0, 0, 0.02);
+      }
+
+      /* Update History */
+      .update-history {
+        max-height: 300px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+      .update-entry {
+        display: flex;
+        align-items: start;
+        gap: 0.5rem;
+        padding: 0.375rem 0.5rem;
+        border-radius: 4px;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.6875rem;
+        line-height: 1.4;
+      }
+      .update-entry:nth-child(odd) {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .theme-light .update-entry:nth-child(odd) {
+        background: rgba(0, 0, 0, 0.02);
+      }
+      .update-entry-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+      }
+      .update-entry-indicator.is-success {
+        background: rgba(134, 239, 172, 0.15);
+        color: #86efac;
+      }
+      .theme-light .update-entry-indicator.is-success {
+        background: rgba(22, 163, 74, 0.1);
+        color: #16a34a;
+      }
+      .update-entry-indicator.is-error {
+        background: rgba(248, 113, 113, 0.15);
+        color: #f87171;
+      }
+      .theme-light .update-entry-indicator.is-error {
+        background: rgba(220, 38, 38, 0.1);
+        color: #dc2626;
+      }
+      .update-entry-time {
+        color: var(--text-secondary);
+        white-space: nowrap;
+        font-size: 0.6875rem;
+        flex-shrink: 0;
+      }
+      .update-entry-content {
+        min-width: 0;
+      }
+      .update-entry-label {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.125rem;
+      }
+      .update-entry-body {
+        color: var(--text-secondary);
+        font-size: 0.6875rem;
+        line-height: 1.4;
+      }
+      .update-entry-body .json-viewer {
+        font-size: 0.6875rem;
+      }
+      .update-empty {
+        color: var(--text-secondary);
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.75rem;
+        font-style: italic;
+        padding: 1rem 0;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading State -->
+    <div id="app-loading" class="app-loading">
+      <div class="app-loading-spinner"></div>
+      <div class="app-loading-text">Waiting for tool result...</div>
+    </div>
+
+    <!-- Main Content (hidden until ready) -->
+    <div id="app-content" class="app-content">
+      <h1>Model Context Inspector</h1>
+      <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+
+      <div class="terminal">
+        <div class="terminal-grid">
+
+          <!-- Interactive Counter Demo -->
+          <div class="terminal-section">
+            <h2>Interactive Demo</h2>
+            <div class="counter-demo">
+              <div class="counter-btns">
+                <button class="action-btn" id="btn-decrement">−</button>
+              </div>
+              <div class="counter-value" id="counter-value">0</div>
+              <div class="counter-btns">
+                <button class="action-btn" id="btn-increment">+</button>
+              </div>
+              <button class="action-btn" id="btn-reset-counter" style="margin-left: auto;">Reset</button>
+            </div>
+          </div>
+
+          <!-- Manual Send -->
+          <div class="terminal-section" style="padding: 0;">
+            <div style="padding: 1.5rem 24px 0;"><h2>Manual Send</h2></div>
+            <div class="manual-send-layout">
+              <div class="manual-send-sidebar">
+                <div>
+                  <h3 class="manual-send-sidebar-heading">Presets</h3>
+                  <div class="manual-send-sidebar-list">
+                    <button class="action-btn" id="preset-text">Text content</button>
+                    <button class="action-btn" id="preset-structured">Structured content</button>
+                    <button class="action-btn" id="preset-both">Both</button>
+                    <button class="action-btn" id="preset-empty">Empty (clear)</button>
+                  </div>
+                </div>
+              </div>
+              <div class="manual-send-editor">
+                <div class="manual-send-field">
+                  <div class="manual-send-field-header">
+                    <span class="manual-send-field-label">content</span>
+                    <span class="manual-send-field-hint">JSON array of ContentBlocks</span>
+                  </div>
+                  <textarea id="input-content" placeholder='[{"type": "text", "text": "User selected 3 items"}]'></textarea>
+                </div>
+                <div class="manual-send-field">
+                  <div class="manual-send-field-header">
+                    <span class="manual-send-field-label">structuredContent</span>
+                    <span class="manual-send-field-hint">JSON object</span>
+                  </div>
+                  <textarea id="input-structured" placeholder='{"selectedItems": 3, "total": 150}'></textarea>
+                </div>
+                <div class="manual-send-actions">
+                  <button class="action-btn" id="btn-send">Send ui/update-model-context</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Update History -->
+          <div class="terminal-section">
+            <h2>Update History</h2>
+            <div class="update-history" id="update-history">
+              <div class="update-empty">No updates sent yet</div>
+            </div>
+          </div>
+
+        </div>
+        <div id="inspector-footer" class="inspector-footer"></div>
+      </div>
+    </div>
+
+    <script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
+    <script>
+      (function () {
+        let counter = 0;
+        let updateCount = 0;
+        const historyEl = document.getElementById('update-history');
+
+        function addHistoryEntry(status, params) {
+          updateCount++;
+          if (updateCount === 1) {
+            historyEl.innerHTML = '';
+          }
+          const entry = document.createElement('div');
+          entry.className = 'update-entry';
+
+          const time = MCPAppShell.getTimestamp();
+          const icon = status === 'success' ? '↑' : '✗';
+          const indicatorClass = status === 'success' ? 'is-success' : 'is-error';
+          const label = status === 'success' ? 'update-model-context' : 'error';
+
+          entry.innerHTML =
+            '<span class="update-entry-time">' + time + '</span>' +
+            '<span class="update-entry-indicator ' + indicatorClass + '" title="' + status + '">' + icon + '</span>' +
+            '<div class="update-entry-content">' +
+              '<div class="update-entry-label">' + MCPAppShell.escapeHtml(label) + '</div>' +
+              '<div class="update-entry-body">' +
+                '<div class="json-viewer">' + MCPAppShell.renderJsonValue(params, 0, 2) + '</div>' +
+              '</div>' +
+            '</div>';
+
+          historyEl.insertBefore(entry, historyEl.firstChild);
+        }
+
+        function sendModelContext(params) {
+          MCPAppShell.sendRequest('ui/update-model-context', params)
+            .then(function () {
+              addHistoryEntry('success', params);
+            })
+            .catch(function (error) {
+              addHistoryEntry('error', { error: error.message || error, params: params });
+            });
+        }
+
+        function updateCounter() {
+          document.getElementById('counter-value').textContent = counter;
+          sendModelContext({
+            content: [
+              { type: 'text', text: 'The user is interacting with a counter demo. Current counter value: ' + counter }
+            ],
+            structuredContent: { counter: counter }
+          });
+        }
+
+        // Counter buttons
+        document.getElementById('btn-increment').addEventListener('click', function () {
+          counter++;
+          updateCounter();
+        });
+
+        document.getElementById('btn-decrement').addEventListener('click', function () {
+          counter--;
+          updateCounter();
+        });
+
+        document.getElementById('btn-reset-counter').addEventListener('click', function () {
+          counter = 0;
+          updateCounter();
+        });
+
+        // Manual send
+        document.getElementById('btn-send').addEventListener('click', function () {
+          const contentStr = document.getElementById('input-content').value.trim();
+          const structuredStr = document.getElementById('input-structured').value.trim();
+
+          const params = {};
+          if (contentStr) {
+            try {
+              params.content = JSON.parse(contentStr);
+            } catch (e) {
+              addHistoryEntry('error', { error: 'Invalid JSON in content field: ' + e.message });
+              return;
+            }
+          }
+          if (structuredStr) {
+            try {
+              params.structuredContent = JSON.parse(structuredStr);
+            } catch (e) {
+              addHistoryEntry('error', { error: 'Invalid JSON in structuredContent field: ' + e.message });
+              return;
+            }
+          }
+
+          sendModelContext(params);
+        });
+
+        // Presets
+        document.getElementById('preset-text').addEventListener('click', function () {
+          document.getElementById('input-content').value = JSON.stringify([
+            { type: 'text', text: 'User selected 3 items totaling $150' }
+          ], null, 2);
+          document.getElementById('input-structured').value = '';
+        });
+
+        document.getElementById('preset-structured').addEventListener('click', function () {
+          document.getElementById('input-content').value = '';
+          document.getElementById('input-structured').value = JSON.stringify({
+            selectedItems: 3,
+            total: 150,
+            currency: 'USD'
+          }, null, 2);
+        });
+
+        document.getElementById('preset-both').addEventListener('click', function () {
+          document.getElementById('input-content').value = JSON.stringify([
+            { type: 'text', text: 'User selected 3 items totaling $150' }
+          ], null, 2);
+          document.getElementById('input-structured').value = JSON.stringify({
+            selectedItems: 3,
+            total: 150,
+            currency: 'USD'
+          }, null, 2);
+        });
+
+        document.getElementById('preset-empty').addEventListener('click', function () {
+          document.getElementById('input-content').value = '';
+          document.getElementById('input-structured').value = '';
+        });
+
+        // Initialize
+        MCPAppShell.initialize({
+          title: 'Model Context',
+          clientName: 'Model Context Inspector',
+          clientVersion: '1.0.0',
+        });
+
+        // Ready on tool result
+        window.addEventListener('mcp-tool-result', function () {
+          MCPAppShell.setupInspectorFooter('inspect-model-context');
+        });
+      })();
+    </script>
+  </body>
+</html>
