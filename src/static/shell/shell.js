@@ -24,6 +24,26 @@
   let pendingReportedHeight = null
   let sizeChangeFrame = null
 
+  function getMeasuredContentHeight() {
+    const bodyRect = document.body.getBoundingClientRect()
+    const readyContent = document.querySelector(".app-content.is-ready")
+    const loadingContent = document.getElementById("app-loading")
+    const activeRoot =
+      readyContent && readyContent instanceof HTMLElement
+        ? readyContent
+        : loadingContent
+
+    if (activeRoot && activeRoot instanceof HTMLElement) {
+      const rootRect = activeRoot.getBoundingClientRect()
+      return Math.max(0, Math.ceil(rootRect.bottom - bodyRect.top))
+    }
+
+    return Math.max(
+      Math.ceil(document.body.getBoundingClientRect().height),
+      Math.ceil(document.body.scrollHeight)
+    )
+  }
+
   // Message log
   const messageLog = []
   const MAX_MESSAGES = 100
@@ -286,10 +306,7 @@
   // ==========================================================================
 
   function sendSizeChanged() {
-    const measuredHeight = Math.max(
-      Math.ceil(document.body.scrollHeight),
-      Math.ceil(document.documentElement.scrollHeight)
-    )
+    const measuredHeight = getMeasuredContentHeight()
 
     pendingReportedHeight = measuredHeight
 
@@ -1237,6 +1254,14 @@
   // Observe size changes
   const resizeObserver = new ResizeObserver(sendSizeChanged)
   resizeObserver.observe(document.body)
+  const appContent = document.getElementById("app-content")
+  if (appContent) {
+    resizeObserver.observe(appContent)
+  }
+  const appLoading = document.getElementById("app-loading")
+  if (appLoading) {
+    resizeObserver.observe(appLoading)
+  }
 
   // ==========================================================================
   // Inspector Navigation
