@@ -45,6 +45,17 @@
         let unexpectedProps = [];
         let currentTestIndex = 0;
         let isRunning = false;
+        const expandedGroups = new Set();
+        let rawDataExpanded = false;
+
+        function shouldIgnoreHostContextChange(params) {
+          if (!params || typeof params !== 'object' || Array.isArray(params)) {
+            return false;
+          }
+
+          const keys = Object.keys(params);
+          return keys.length === 1 && keys[0] === 'containerDimensions';
+        }
 
         // Group tests by their top-level property
         function groupTestsByProperty(tests, results) {
@@ -189,8 +200,8 @@
             const groupProvidedCount = group.results.filter(function(r) { return r && (r.status === 'provided' || r.status === 'warn'); }).length;
             const groupInvalidCount = group.results.filter(function(r) { return r && r.status === 'invalid'; }).length;
             
-            // Auto-expand groups with issues
-            const shouldExpand = groupStatus === 'invalid' || groupStatus === 'warn';
+            // Auto-expand groups with issues, but preserve user toggles across rerenders
+            const shouldExpand = expandedGroups.has(group.name) || groupStatus === 'invalid' || groupStatus === 'warn';
             
             html += '<div class="test-group' + (shouldExpand ? ' is-expanded' : '') + '" data-group="' + MCPAppShell.escapeHtml(group.name) + '">';
             
@@ -267,7 +278,7 @@
           // Raw data explorer
           const hostInfo = MCPAppShell.getHostInfo();
           if (hostInfo) {
-            html += '<div class="test-raw-data" id="raw-data-section">';
+            html += '<div class="test-raw-data' + (rawDataExpanded ? ' is-expanded' : '') + '" id="raw-data-section">';
             html += '<div class="test-raw-data-header">';
             html += '<span class="test-raw-data-toggle">▶</span>';
             html += '<span class="test-raw-data-title">Raw Host Data</span>';
@@ -286,7 +297,19 @@
           // Setup group toggle handlers
           container.querySelectorAll('.test-group-header').forEach(function(header) {
             header.addEventListener('click', function() {
-              header.parentElement.classList.toggle('is-expanded');
+              const group = header.parentElement;
+              const groupName = group && group.getAttribute('data-group');
+              if (!group) return;
+
+              group.classList.toggle('is-expanded');
+              if (groupName) {
+                if (group.classList.contains('is-expanded')) {
+                  expandedGroups.add(groupName);
+                } else {
+                  expandedGroups.delete(groupName);
+                }
+              }
+              MCPAppShell.sendSizeChanged();
             });
           });
 
@@ -297,6 +320,8 @@
             if (rawDataHeader) {
               rawDataHeader.addEventListener('click', function() {
                 rawDataSection.classList.toggle('is-expanded');
+                rawDataExpanded = rawDataSection.classList.contains('is-expanded');
+                MCPAppShell.sendSizeChanged();
               });
             }
           }
@@ -305,7 +330,9 @@
         }
 
         // Run tests with animation
-        function runTests() {
+        function runTests(options) {
+          options = options || {};
+          const animate = options.animate === true;
           const hostInfo = MCPAppShell.getHostInfo();
           if (!hostInfo) return;
 
@@ -325,6 +352,16 @@
 
           // Initial render
           renderTestRunner();
+
+          if (!animate) {
+            testResults = testCases.map(function(test) {
+              return MCPAppShell.runTestCase(test, { hostContext: hostInfo.hostContext });
+            });
+            isRunning = false;
+            currentTestIndex = testCases.length;
+            renderTestRunner();
+            return;
+          }
 
           // Run tests with staggered timing for visual effect
           function runNextTest() {
@@ -362,15 +399,19 @@
 
         // Listen for tool result to start tests
         window.addEventListener('mcp-tool-result', function () {
-          runTests();
+          runTests({ animate: true });
           MCPAppShell.setupInspectorFooter('inspect-host-info');
         });
 
         // Listen for host context changes
-        window.addEventListener('mcp-host-context-changed', function () {
+        window.addEventListener('mcp-host-context-changed', function (event) {
           if (MCPAppShell.isReady()) {
-            // Re-run tests when host context changes
-            runTests();
+            if (shouldIgnoreHostContextChange(event.detail)) {
+              return;
+            }
+
+            // Re-run tests when meaningful host context changes
+            runTests({ animate: false });
           }
         });
       })();
