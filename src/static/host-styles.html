@@ -23,12 +23,18 @@
         color: var(--color-text-primary, var(--text-primary));
       }
 
-      /* Allow scrolling in fullscreen mode — this page has long-form content */
+      /* Inline mode should grow with content and let the host resize the iframe.
+         Only fullscreen / PiP should scroll internally. */
       html {
-        overflow: auto;
+        overflow: hidden;
       }
 
-      body.display-mode-fullscreen {
+      body {
+        overflow: visible;
+      }
+
+      body.display-mode-fullscreen,
+      body.display-mode-pip {
         height: auto;
         overflow-y: auto;
         display: block;
@@ -1458,8 +1464,8 @@
 
         // Listen for tool result to render content
         window.addEventListener("mcp-tool-result", function () {
-          renderHostStyles()
           MCPAppShell.setupInspectorFooter("inspect-host-styles")
+          renderHostStyles()
         })
 
         // Listen for host context changes
