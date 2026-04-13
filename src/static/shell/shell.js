@@ -1222,6 +1222,7 @@
     { id: "inspect-tool-data", icon: "🔧", label: "Tool Data" },
     { id: "inspect-display-modes", icon: "🖼️", label: "Display Modes" },
     { id: "inspect-model-context", icon: "🧠", label: "Model Context" },
+    { id: "inspect-media-player", icon: "🎬", label: "Media Player" },
   ]
 
   function navigateToInspector(toolName) {

@@ -1,10 +1,16 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css?v={{CACHE_HASH}}">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{BASE_URL}}/shell/shell.css?v={{CACHE_HASH}}"
+    />
     <style>
       /* Launcher-specific styles */
       .launcher-grid {
@@ -97,10 +103,11 @@
     <div id="app-content" class="app-content">
       <h1>MCP App Bench</h1>
       <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
-      
+
       <p class="launcher-intro">
-        Select an inspector to evaluate your MCP host's support for MCP Apps. 
-        Each inspector focuses on a specific aspect of the MCP Apps specification.
+        Select an inspector to evaluate your MCP host's support for MCP Apps.
+        Each inspector focuses on a specific aspect of the MCP Apps
+        specification.
       </p>
 
       <div class="terminal">
@@ -109,7 +116,8 @@
             <span class="launcher-card-icon">✅</span>
             <h3 class="launcher-card-title">Host Conformance</h3>
             <p class="launcher-card-description">
-              Check host conformance against the HostContext schema. Measures coverage of expected properties and flags any issues.
+              Check host conformance against the HostContext schema. Measures
+              coverage of expected properties and flags any issues.
             </p>
             <p class="launcher-card-tool">tool: inspect-host-info</p>
           </div>
@@ -118,7 +126,8 @@
             <span class="launcher-card-icon">🎨</span>
             <h3 class="launcher-card-title">Host Styles</h3>
             <p class="launcher-card-description">
-              Visualize host-provided CSS variables, typography, colors, shadows, and border radius tokens.
+              Visualize host-provided CSS variables, typography, colors,
+              shadows, and border radius tokens.
             </p>
             <p class="launcher-card-tool">tool: inspect-host-styles</p>
           </div>
@@ -127,7 +136,8 @@
             <span class="launcher-card-icon">💬</span>
             <h3 class="launcher-card-title">Messaging</h3>
             <p class="launcher-card-description">
-              Test UI↔Host and UI↔Server messaging. Monitor requests, responses, and notifications.
+              Test UI↔Host and UI↔Server messaging. Monitor requests, responses,
+              and notifications.
             </p>
             <p class="launcher-card-tool">tool: inspect-messaging</p>
           </div>
@@ -136,7 +146,8 @@
             <span class="launcher-card-icon">🔧</span>
             <h3 class="launcher-card-title">Tool Data</h3>
             <p class="launcher-card-description">
-              Inspect tool lifecycle events: input, partial input, results, and cancellation.
+              Inspect tool lifecycle events: input, partial input, results, and
+              cancellation.
             </p>
             <p class="launcher-card-tool">tool: inspect-tool-data</p>
           </div>
@@ -145,7 +156,8 @@
             <span class="launcher-card-icon">🖼️</span>
             <h3 class="launcher-card-title">Display Modes</h3>
             <p class="launcher-card-description">
-              Test display mode switching between inline, fullscreen, and pip. Request mode changes and observe host responses.
+              Test display mode switching between inline, fullscreen, and pip.
+              Request mode changes and observe host responses.
             </p>
             <p class="launcher-card-tool">tool: inspect-display-modes</p>
           </div>
@@ -154,9 +166,20 @@
             <span class="launcher-card-icon">👻</span>
             <h3 class="launcher-card-title">Transparency</h3>
             <p class="launcher-card-description">
-              Test whether the host allows iframe transparency across light and dark color schemes.
+              Test whether the host allows iframe transparency across light and
+              dark color schemes.
             </p>
             <p class="launcher-card-tool">tool: inspect-transparency</p>
+          </div>
+
+          <div class="launcher-card" data-tool="inspect-media-player">
+            <span class="launcher-card-icon">🎬</span>
+            <h3 class="launcher-card-title">Media Player</h3>
+            <p class="launcher-card-description">
+              Switch between open video and audio content inside a hosted MCP
+              app media player.
+            </p>
+            <p class="launcher-card-tool">tool: inspect-media-player</p>
           </div>
         </div>
       </div>
@@ -164,45 +187,52 @@
 
     <script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
     <script>
-      (function () {
+      ;(function () {
         // Initialize the shell
         MCPAppShell.initialize({
-          title: 'MCP App Bench',
-          clientName: 'MCP App Bench',
-          clientVersion: '1.0.0',
+          title: "MCP App Bench",
+          clientName: "MCP App Bench",
+          clientVersion: "1.0.0",
           onInitialized: function (result) {
-            console.log('[Launcher] Initialized with host:', result.hostInfo);
-          }
-        });
+            console.log("[Launcher] Initialized with host:", result.hostInfo)
+          },
+        })
 
         // Listen for tool result to show content
-        window.addEventListener('mcp-tool-result', function () {
+        window.addEventListener("mcp-tool-result", function () {
           // Content is shown automatically by shell
-        });
+        })
 
         // Handle card clicks - call the corresponding tool
-        document.querySelectorAll('.launcher-card').forEach(function (card) {
-          card.addEventListener('click', function () {
-            const toolName = card.getAttribute('data-tool');
-            if (!toolName) return;
+        document.querySelectorAll(".launcher-card").forEach(function (card) {
+          card.addEventListener("click", function () {
+            const toolName = card.getAttribute("data-tool")
+            if (!toolName) return
 
-            console.log('[Launcher] Calling tool:', toolName);
-            
+            console.log("[Launcher] Calling tool:", toolName)
+
             // Send a message to the host to call the tool
-            MCPAppShell.sendRequest('ui/message', {
-              role: 'user',
-              content: [{
-                type: 'text',
-                text: 'Please run the ' + toolName + ' tool to inspect my MCP host.'
-              }]
-            }).then(function (result) {
-              console.log('[Launcher] Message sent, result:', result);
-            }).catch(function (error) {
-              console.error('[Launcher] Error sending message:', error);
-            });
-          });
-        });
-      })();
+            MCPAppShell.sendRequest("ui/message", {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text:
+                    "Please run the " +
+                    toolName +
+                    " tool to inspect my MCP host.",
+                },
+              ],
+            })
+              .then(function (result) {
+                console.log("[Launcher] Message sent, result:", result)
+              })
+              .catch(function (error) {
+                console.error("[Launcher] Error sending message:", error)
+              })
+          })
+        })
+      })()
     </script>
   </body>
 </html>

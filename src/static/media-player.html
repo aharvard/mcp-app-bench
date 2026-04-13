@@ -1,0 +1,443 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Victor+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{BASE_URL}}/shell/shell.css?v={{CACHE_HASH}}"
+    />
+    <style>
+      .media-player-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .media-type-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 0.875rem;
+      }
+
+      .media-type-card {
+        appearance: none;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-primary);
+        padding: 1rem;
+        text-align: left;
+        cursor: pointer;
+        transition:
+          transform 0.15s ease,
+          border-color 0.15s ease,
+          background-color 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+
+      .theme-light .media-type-card {
+        background: rgba(0, 0, 0, 0.02);
+      }
+
+      .media-type-card:hover {
+        transform: translateY(-1px);
+        border-color: var(--text-secondary);
+      }
+
+      .media-type-card.is-active {
+        background: var(--text-primary);
+        color: var(--bg-primary);
+        border-color: var(--text-primary);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+      }
+
+      .theme-light .media-type-card.is-active {
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+      }
+
+      .media-type-icon {
+        font-size: 1.5rem;
+        line-height: 1;
+        display: block;
+        margin-bottom: 0.75rem;
+      }
+
+      .media-type-title {
+        display: block;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.875rem;
+        font-weight: 700;
+        margin-bottom: 0.375rem;
+      }
+
+      .media-type-description {
+        margin: 0;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.75rem;
+        line-height: 1.55;
+        opacity: 0.86;
+      }
+
+      .media-stage {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--bg-terminal);
+      }
+
+      .media-stage-shell {
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+      }
+
+      .media-badge {
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.3125rem 0.625rem;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.6875rem;
+        color: var(--text-secondary);
+      }
+
+      .media-viewport {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background:
+          radial-gradient(
+            circle at top,
+            rgba(255, 255, 255, 0.08),
+            transparent 48%
+          ),
+          linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.02),
+            rgba(0, 0, 0, 0.12)
+          );
+      }
+
+      .theme-light .media-viewport {
+        background:
+          radial-gradient(circle at top, rgba(0, 0, 0, 0.04), transparent 48%),
+          linear-gradient(180deg, rgba(0, 0, 0, 0.015), rgba(0, 0, 0, 0.05));
+      }
+
+      .media-element {
+        display: block;
+        width: 100%;
+        max-height: min(56vw, 460px);
+        background: #000;
+      }
+
+      .audio-stage {
+        min-height: 220px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+      }
+
+      .audio-stage-inner {
+        width: min(100%, 540px);
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+        align-items: center;
+        text-align: center;
+      }
+
+      .audio-stage-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--border);
+      }
+
+      .theme-light .audio-stage-icon {
+        background: rgba(0, 0, 0, 0.04);
+      }
+
+      .audio-stage-title {
+        margin: 0;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.9375rem;
+        font-weight: 700;
+      }
+
+      .audio-stage-description {
+        margin: 0;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.75rem;
+        line-height: 1.6;
+        color: var(--text-secondary);
+      }
+
+      .audio-player {
+        width: min(100%, 460px);
+      }
+
+      .media-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .media-meta-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.875rem;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .theme-light .media-meta-card {
+        background: rgba(0, 0, 0, 0.015);
+      }
+
+      .media-meta-label {
+        display: block;
+        margin-bottom: 0.375rem;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+      }
+
+      .media-meta-value {
+        margin: 0;
+        font-family: "Victor Mono", ui-monospace, monospace;
+        font-size: 0.75rem;
+        line-height: 1.55;
+        color: var(--text-primary);
+        word-break: break-word;
+      }
+
+      .media-source-link {
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app-loading" class="app-loading">
+      <div class="app-loading-spinner"></div>
+      <div class="app-loading-text">Waiting for tool result...</div>
+    </div>
+
+    <div id="app-content" class="app-content">
+      <h1>Media Player</h1>
+      <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
+
+      <div class="terminal">
+        <div class="terminal-grid">
+          <div class="terminal-section">
+            <h2>Choose Media Type</h2>
+            <div class="media-player-layout">
+              <div class="media-type-grid">
+                <button
+                  class="media-type-card"
+                  id="media-type-video"
+                  type="button"
+                  data-type="video"
+                >
+                  <span class="media-type-icon">🎬</span>
+                  <span class="media-type-title">Video</span>
+                  <p class="media-type-description">
+                    Big Buck Bunny preview clip from the Blender Foundation.
+                  </p>
+                </button>
+
+                <button
+                  class="media-type-card"
+                  id="media-type-audio"
+                  type="button"
+                  data-type="audio"
+                >
+                  <span class="media-type-icon">🎧</span>
+                  <span class="media-type-title">Audio</span>
+                  <p class="media-type-description">
+                    Public MP3 sample file streamed as an audio-only playback
+                    test.
+                  </p>
+                </button>
+              </div>
+
+              <div class="media-stage">
+                <div class="media-stage-shell">
+                  <div class="media-badge" id="media-badge">Mode: video</div>
+                  <div class="media-viewport" id="media-viewport"></div>
+                  <div class="media-meta-grid">
+                    <div class="media-meta-card">
+                      <span class="media-meta-label">Source</span>
+                      <p class="media-meta-value" id="media-source-label"></p>
+                    </div>
+                    <div class="media-meta-card">
+                      <span class="media-meta-label">Format</span>
+                      <p class="media-meta-value" id="media-format"></p>
+                    </div>
+                    <div class="media-meta-card">
+                      <span class="media-meta-label">URL</span>
+                      <p class="media-meta-value">
+                        <a
+                          id="media-source-url"
+                          class="media-source-link"
+                          href="#"
+                          target="_blank"
+                          rel="noreferrer"
+                        ></a>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="inspector-footer" class="inspector-footer"></div>
+      </div>
+    </div>
+
+    <script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
+    <script>
+      ;(function () {
+        var MEDIA = {
+          video: {
+            label: "Video",
+            icon: "🎬",
+            sourceLabel: "Big Buck Bunny (Blender Foundation)",
+            format: "video/mp4",
+            url: "https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4",
+            description:
+              "An open movie preview clip rendered in a standard HTML5 video element.",
+          },
+          audio: {
+            label: "Audio",
+            icon: "🎧",
+            sourceLabel: "MP3 test file (Internet Archive)",
+            format: "audio/mpeg",
+            url: "https://archive.org/download/testmp3testfile/mpthreetest.mp3",
+            description:
+              "A simple audio-only playback example rendered in a native HTML5 audio element.",
+          },
+        }
+
+        var selectedType = "video"
+
+        function getInitialType() {
+          var toolData = MCPAppShell.getToolData()
+          var mediaType =
+            toolData &&
+            toolData.toolResult &&
+            toolData.toolResult.structuredContent &&
+            toolData.toolResult.structuredContent.mediaType
+
+          return mediaType === "audio" ? "audio" : "video"
+        }
+
+        function renderPlayer() {
+          var media = MEDIA[selectedType]
+          var viewport = document.getElementById("media-viewport")
+          var badge = document.getElementById("media-badge")
+          var sourceLabel = document.getElementById("media-source-label")
+          var format = document.getElementById("media-format")
+          var sourceUrl = document.getElementById("media-source-url")
+
+          if (!viewport || !badge || !sourceLabel || !format || !sourceUrl) {
+            return
+          }
+
+          badge.textContent = "Mode: " + media.label.toLowerCase()
+          sourceLabel.textContent = media.sourceLabel
+          format.textContent = media.format
+          sourceUrl.textContent = media.url
+          sourceUrl.href = media.url
+
+          if (selectedType === "video") {
+            viewport.innerHTML =
+              '<video class="media-element" controls playsinline preload="metadata">' +
+              '<source src="' +
+              media.url +
+              '" type="' +
+              media.format +
+              '">' +
+              "</video>"
+          } else {
+            viewport.innerHTML =
+              '<div class="audio-stage">' +
+              '  <div class="audio-stage-inner">' +
+              '    <div class="audio-stage-icon">' +
+              media.icon +
+              "</div>" +
+              '    <p class="audio-stage-title">' +
+              media.sourceLabel +
+              "</p>" +
+              '    <p class="audio-stage-description">' +
+              media.description +
+              "</p>" +
+              '    <audio class="audio-player" controls preload="metadata">' +
+              '      <source src="' +
+              media.url +
+              '" type="' +
+              media.format +
+              '">' +
+              "    </audio>" +
+              "  </div>" +
+              "</div>"
+          }
+
+          ;["video", "audio"].forEach(function (type) {
+            var btn = document.getElementById("media-type-" + type)
+            if (!btn) return
+            btn.classList.toggle("is-active", type === selectedType)
+          })
+
+          MCPAppShell.sendSizeChanged()
+        }
+
+        function setSelectedType(type) {
+          if (!MEDIA[type]) return
+          selectedType = type
+          renderPlayer()
+        }
+
+        MCPAppShell.initialize({
+          title: "Media Player",
+          clientName: "Media Player Inspector",
+          clientVersion: "1.0.0",
+        })
+
+        window.addEventListener("mcp-tool-result", function () {
+          selectedType = getInitialType()
+          renderPlayer()
+          MCPAppShell.setupInspectorFooter("inspect-media-player")
+        })
+
+        document
+          .querySelectorAll(".media-type-card")
+          .forEach(function (button) {
+            button.addEventListener("click", function () {
+              var type = button.getAttribute("data-type")
+              if (type) {
+                setSelectedType(type)
+              }
+            })
+          })
+      })()
+    </script>
+  </body>
+</html>

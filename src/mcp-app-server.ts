@@ -26,6 +26,7 @@ import {
   INSPECT_TRANSPARENCY_URI,
   INSPECT_VISIBILITY_URI,
   INSPECT_MODEL_CONTEXT_URI,
+  INSPECT_MEDIA_PLAYER_URI,
 } from "./utils/constants.js"
 import { loadAppHtml } from "./utils/load-app-html.js"
 
@@ -985,6 +986,86 @@ export function initMcpAppServer(): McpServer {
         ],
         structuredContent: {
           timestamp: new Date().toISOString(),
+        },
+      }
+    }
+  )
+
+  // ==========================================================================
+  // Media Player Inspector
+  // ==========================================================================
+
+  server.registerResource(
+    "inspect-media-player",
+    INSPECT_MEDIA_PLAYER_URI,
+    {
+      title: "Media Player Inspector",
+      description:
+        "Interactive video and audio player demo with open media sources rendered inside an MCP app",
+      mimeType: MCP_APPS_MIME_TYPE,
+    },
+    async () => ({
+      contents: [
+        {
+          uri: INSPECT_MEDIA_PLAYER_URI,
+          mimeType: MCP_APPS_MIME_TYPE,
+          text: loadAppHtml("media-player"),
+          _meta: {
+            ui: {
+              prefersBorder: true,
+              csp: {
+                resourceDomains: [
+                  BASE_URL,
+                  "https://fonts.googleapis.com",
+                  "https://fonts.gstatic.com",
+                  "https://download.blender.org",
+                  "https://archive.org",
+                ],
+              },
+            },
+          },
+        },
+      ],
+    })
+  )
+
+  server.registerTool(
+    "inspect-media-player",
+    {
+      title: "Media Player Inspector",
+      description:
+        "Launch a media player demo that switches between open video and audio content inside the MCP app host",
+      inputSchema: {
+        mediaType: z
+          .enum(["video", "audio"])
+          .describe("Which media mode to open first")
+          .optional(),
+      },
+      outputSchema: {
+        timestamp: z.string().describe("The timestamp of the inspection"),
+        mediaType: z
+          .enum(["video", "audio"])
+          .describe("The initially selected media mode"),
+      },
+      _meta: {
+        ui: {
+          resourceUri: INSPECT_MEDIA_PLAYER_URI,
+        },
+      },
+    },
+    async (args) => {
+      const mediaType = args.mediaType ?? "video"
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Media Player Inspector loaded. Showing the ${mediaType} demo inside the MCP app host.`,
+          },
+        ],
+        structuredContent: {
+          timestamp: new Date().toISOString(),
+          mediaType,
         },
       }
     }
