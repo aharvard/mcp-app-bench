@@ -1019,7 +1019,7 @@ export function initMcpAppServer(): McpServer {
                   "https://fonts.googleapis.com",
                   "https://fonts.gstatic.com",
                   "https://download.blender.org",
-                  "https://archive.org",
+                  "https://dn721902.ca.archive.org",
                 ],
               },
             },
