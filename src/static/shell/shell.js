@@ -1054,14 +1054,6 @@
     return categories
   }
 
-  function parseLightDark(value) {
-    const match = value.match(/^light-dark\(\s*([^,]+)\s*,\s*([^)]+)\s*\)$/)
-    if (match) {
-      return { light: match[1].trim(), dark: match[2].trim() }
-    }
-    return null
-  }
-
   // ==========================================================================
   // Message Handling
   // ==========================================================================
@@ -1418,7 +1410,6 @@
     // Styles
     injectStyleVariables: injectStyleVariables,
     categorizeStyleVariables: categorizeStyleVariables,
-    parseLightDark: parseLightDark,
 
     // Navigation
     setupInspectorFooter: setupInspectorFooter,
