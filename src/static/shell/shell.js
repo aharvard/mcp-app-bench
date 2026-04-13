@@ -20,6 +20,9 @@
     toolCancelled: null,
   }
   let isReady = false
+  let lastReportedHeight = null
+  let pendingReportedHeight = null
+  let sizeChangeFrame = null
 
   // Message log
   const messageLog = []
@@ -283,17 +286,41 @@
   // ==========================================================================
 
   function sendSizeChanged() {
-    // const width = document.body.scrollWidth
-    const height = document.body.scrollHeight
-    console.log("🔥Sending size changed notification:", { height })
-    window.parent.postMessage(
-      {
-        jsonrpc: "2.0",
-        method: "ui/notifications/size-changed",
-        params: { height },
-      },
-      "*"
+    const measuredHeight = Math.max(
+      Math.ceil(document.body.scrollHeight),
+      Math.ceil(document.documentElement.scrollHeight)
     )
+
+    pendingReportedHeight = measuredHeight
+
+    if (sizeChangeFrame !== null) {
+      return
+    }
+
+    sizeChangeFrame = window.requestAnimationFrame(function () {
+      sizeChangeFrame = null
+
+      if (pendingReportedHeight === null) {
+        return
+      }
+
+      if (lastReportedHeight === pendingReportedHeight) {
+        return
+      }
+
+      lastReportedHeight = pendingReportedHeight
+      console.log("🔥Sending size changed notification:", {
+        height: pendingReportedHeight,
+      })
+      window.parent.postMessage(
+        {
+          jsonrpc: "2.0",
+          method: "ui/notifications/size-changed",
+          params: { height: pendingReportedHeight },
+        },
+        "*"
+      )
+    })
   }
 
   // ==========================================================================
