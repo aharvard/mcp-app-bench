@@ -132,6 +132,7 @@ body {
   background-color: var(--bg-primary);
   font-family: "Instrument Serif", system-ui, sans-serif;
   font-weight: 400;
+  font-synthesis: none;
   font-style: normal;
   transition:
     background-color 0.15s ease,
@@ -234,6 +235,7 @@ body.display-mode-pip .host-info-subtitle {
 
 h1 {
   font-size: min(max(4rem, 8vw), 8rem);
+  font-weight: 400;
   text-align: center;
   line-height: 0.95;
   margin: 1rem auto;
