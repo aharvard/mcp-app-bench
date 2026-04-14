@@ -40,4 +40,4 @@ export const INSPECT_MODEL_CONTEXT_URI =
 export const INSPECT_MEDIA_PLAYER_URI =
   `${MCP_APPS_UI_RESOURCE_SCHEME}inspect-media-player` as const
 
-export const APP_ICON = `${BASE_URL}/assets/icon.svg` as const
+export const APP_ICON = `${BASE_URL}/static/icon.svg` as const

@@ -35,9 +35,13 @@ app.use(express.json())
 const assetsDir = path.join(__dirname, "..", "assets")
 app.use("/assets", express.static(assetsDir, { maxAge: "1h" }))
 
+// Serve built static app files so shared assets like icon.svg have a stable URL
+const staticDir = path.join(__dirname, "static")
+app.use("/static", express.static(staticDir, { maxAge: "1h" }))
+
 // Serve shell assets (CSS, JS) from the static/shell directory
 // No maxAge - cache busting is handled via query string hash
-const shellDir = path.join(__dirname, "static", "shell")
+const shellDir = path.join(staticDir, "shell")
 app.use("/shell", express.static(shellDir))
 
 // =============================================================================
@@ -53,7 +57,7 @@ const mcpTransports: { [sessionId: string]: StreamableHTTPServerTransport } = {}
 
 // Add favicon Link header to all /mcp requests
 app.use("/mcp", (req, res, next) => {
-  res.setHeader("Link", `<${BASE_URL}/assets/icon.svg>; rel="icon"`)
+  res.setHeader("Link", `<${BASE_URL}/static/icon.svg>; rel="icon"`)
   next()
 })
 

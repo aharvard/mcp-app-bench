@@ -1,3 +1,63 @@
-<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="40" fill="lime" />
+<svg
+  width="128"
+  height="128"
+  viewBox="0 0 128 128"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-labelledby="iconTitle iconDesc"
+>
+  <title id="iconTitle">Waveform Chat Icon</title>
+  <desc id="iconDesc">
+    A chat bubble with a subtle grid and a heartbeat-like waveform pulse.
+  </desc>
+  <defs>
+    <linearGradient
+      id="panel"
+      x1="64"
+      y1="12"
+      x2="64"
+      y2="108"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stop-color="#1A2230" />
+      <stop offset="1" stop-color="#0E131C" />
+    </linearGradient>
+    <linearGradient
+      id="pulse"
+      x1="34"
+      y1="58"
+      x2="94"
+      y2="58"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stop-color="#78E1FF" />
+      <stop offset="1" stop-color="#5AC8FF" />
+    </linearGradient>
+  </defs>
+
+  <path
+    d="M18 23C18 16.9249 22.9249 12 29 12H99C105.075 12 110 16.9249 110 23V77C110 83.0751 105.075 88 99 88H64L42 107V88H29C22.9249 88 18 83.0751 18 77V23Z"
+    fill="url(#panel)"
+    stroke="#33425B"
+    stroke-width="3"
+  />
+
+  <path d="M40 28V74" stroke="#42546F" stroke-width="2" opacity="0.45" />
+  <path d="M64 28V74" stroke="#42546F" stroke-width="2" opacity="0.45" />
+  <path d="M88 28V74" stroke="#42546F" stroke-width="2" opacity="0.45" />
+  <path d="M28 38H100" stroke="#42546F" stroke-width="2" opacity="0.45" />
+  <path d="M28 54H100" stroke="#42546F" stroke-width="2" opacity="0.45" />
+  <path d="M28 70H100" stroke="#42546F" stroke-width="2" opacity="0.45" />
+
+  <path
+    d="M28 56H40L48 56L56 42L64 74L73 32L82 61H100"
+    stroke="url(#pulse)"
+    stroke-width="8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <circle cx="28" cy="56" r="4" fill="#78E1FF" />
+  <circle cx="100" cy="61" r="4" fill="#5AC8FF" />
 </svg>
