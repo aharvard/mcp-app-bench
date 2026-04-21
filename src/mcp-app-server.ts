@@ -55,6 +55,44 @@ export function initMcpAppServer(): McpServer {
     }
   )
 
+  const footerJokeInput = z
+    .string()
+    .describe(
+      "A simple one-line joke to display in the app footer for this inspector."
+    )
+    .optional()
+
+  const footerJokeOutput = z
+    .string()
+    .describe("The simple one-line joke displayed in the app footer.")
+    .optional()
+
+  function withFooterInputSchema<T extends z.ZodRawShape>(shape: T) {
+    return {
+      ...shape,
+      joke: footerJokeInput,
+    }
+  }
+
+  function withFooterOutputSchema<T extends z.ZodRawShape>(shape: T) {
+    return {
+      ...shape,
+      timestamp: z.string().describe("The timestamp of the inspection"),
+      joke: footerJokeOutput,
+    }
+  }
+
+  function buildFooterStructuredContent(
+    joke: string | undefined,
+    extra: Record<string, unknown> = {}
+  ) {
+    return {
+      ...extra,
+      timestamp: new Date().toISOString(),
+      ...(joke ? { joke } : {}),
+    }
+  }
+
   // ==========================================================================
   // Resources - Register immediately (always available)
   // ==========================================================================
@@ -268,13 +306,12 @@ export function initMcpAppServer(): McpServer {
       title: "MCP App Bench",
       description:
         "An interactive bench test launcher to evaluate MCP host support for MCP Apps",
-      inputSchema: {
+      inputSchema: withFooterInputSchema({
         name: z.string().describe("The name of the MCP app to test").optional(),
-      },
-      outputSchema: {
+      }),
+      outputSchema: withFooterOutputSchema({
         name: z.string().describe("The name of the MCP app to test").optional(),
-        timestamp: z.string().describe("The timestamp of the test").optional(),
-      },
+      }),
       _meta: {
         ui: {
           resourceUri: MCP_APP_URI,
@@ -283,10 +320,9 @@ export function initMcpAppServer(): McpServer {
     },
     async (args) => {
       const name = args.name ?? "mcp-app-bench"
-      const structuredContent = {
+      const structuredContent = buildFooterStructuredContent(args.joke, {
         name,
-        timestamp: new Date().toISOString(),
-      }
+      })
       return {
         content: [
           {
@@ -306,19 +342,18 @@ export function initMcpAppServer(): McpServer {
       title: "Host Info Inspector",
       description:
         "Inspect host context, capabilities, protocol version, and validate against the HostContext schema",
-      inputSchema: {
+      inputSchema: withFooterInputSchema({
         user_message: z
           .string()
           .describe("The last message the user sent to the agent")
           .optional(),
-      },
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
+      }),
+      outputSchema: withFooterOutputSchema({
         user_message: z
           .string()
           .describe("The last message the user sent to the agent")
           .optional(),
-      },
+      }),
       _meta: {
         ui: {
           resourceUri: INSPECT_HOST_INFO_URI,
@@ -333,10 +368,9 @@ export function initMcpAppServer(): McpServer {
             text: `Host Info Inspector loaded. Displaying host context and capabilities.`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
+        structuredContent: buildFooterStructuredContent(args.joke, {
           ...(args.user_message ? { user_message: args.user_message } : {}),
-        },
+        }),
       }
     }
   )
@@ -348,17 +382,15 @@ export function initMcpAppServer(): McpServer {
       title: "Host Styles Inspector",
       description:
         "Visualize host-provided CSS variables, typography, colors, shadows, and border radius tokens",
-      inputSchema: {},
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
-      },
+      inputSchema: withFooterInputSchema({}),
+      outputSchema: withFooterOutputSchema({}),
       _meta: {
         ui: {
           resourceUri: INSPECT_HOST_STYLES_URI,
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -366,9 +398,7 @@ export function initMcpAppServer(): McpServer {
             text: `Host Styles Inspector loaded. Displaying host-provided style tokens.`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
-        },
+        structuredContent: buildFooterStructuredContent(args.joke),
       }
     }
   )
@@ -380,17 +410,15 @@ export function initMcpAppServer(): McpServer {
       title: "Messaging Inspector",
       description:
         "Test UI↔Host and UI↔Server messaging. Monitor requests, responses, and notifications",
-      inputSchema: {},
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
-      },
+      inputSchema: withFooterInputSchema({}),
+      outputSchema: withFooterOutputSchema({}),
       _meta: {
         ui: {
           resourceUri: INSPECT_MESSAGING_URI,
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -398,9 +426,7 @@ export function initMcpAppServer(): McpServer {
             text: `Messaging Inspector loaded. Use the buttons to test messaging capabilities.`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
-        },
+        structuredContent: buildFooterStructuredContent(args.joke),
       }
     }
   )
@@ -412,17 +438,15 @@ export function initMcpAppServer(): McpServer {
       title: "Tool Data Inspector",
       description:
         "Inspect tool lifecycle events: input, partial input, results, and cancellation",
-      inputSchema: {},
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
-      },
+      inputSchema: withFooterInputSchema({}),
+      outputSchema: withFooterOutputSchema({}),
       _meta: {
         ui: {
           resourceUri: INSPECT_TOOL_DATA_URI,
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -430,9 +454,7 @@ export function initMcpAppServer(): McpServer {
             text: `Tool Data Inspector loaded. Tool lifecycle events will be displayed here.`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
-        },
+        structuredContent: buildFooterStructuredContent(args.joke),
         _meta: {
           foo: "bar",
         },
@@ -447,17 +469,15 @@ export function initMcpAppServer(): McpServer {
       title: "Display Modes Inspector",
       description:
         "Test display mode switching between inline, fullscreen, and pip modes",
-      inputSchema: {},
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
-      },
+      inputSchema: withFooterInputSchema({}),
+      outputSchema: withFooterOutputSchema({}),
       _meta: {
         ui: {
           resourceUri: INSPECT_DISPLAY_MODES_URI,
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -465,9 +485,7 @@ export function initMcpAppServer(): McpServer {
             text: `Display Modes Inspector loaded. Declared modes: inline, fullscreen, pip`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
-        },
+        structuredContent: buildFooterStructuredContent(args.joke),
       }
     }
   )
@@ -512,17 +530,15 @@ export function initMcpAppServer(): McpServer {
       title: "Display Modes Inspector (Inline + PiP)",
       description:
         "Test display mode switching with only inline and pip modes declared",
-      inputSchema: {},
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
-      },
+      inputSchema: withFooterInputSchema({}),
+      outputSchema: withFooterOutputSchema({}),
       _meta: {
         ui: {
           resourceUri: INSPECT_DISPLAY_MODES_INLINE_PIP_URI,
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -530,9 +546,7 @@ export function initMcpAppServer(): McpServer {
             text: `Display Modes Inspector loaded. Declared modes: inline, pip`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
-        },
+        structuredContent: buildFooterStructuredContent(args.joke),
       }
     }
   )
@@ -577,17 +591,15 @@ export function initMcpAppServer(): McpServer {
       title: "Display Modes Inspector (Inline + Fullscreen)",
       description:
         "Test display mode switching with only inline and fullscreen modes declared",
-      inputSchema: {},
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
-      },
+      inputSchema: withFooterInputSchema({}),
+      outputSchema: withFooterOutputSchema({}),
       _meta: {
         ui: {
           resourceUri: INSPECT_DISPLAY_MODES_INLINE_FULLSCREEN_URI,
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -595,9 +607,7 @@ export function initMcpAppServer(): McpServer {
             text: `Display Modes Inspector loaded. Declared modes: inline, fullscreen`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
-        },
+        structuredContent: buildFooterStructuredContent(args.joke),
       }
     }
   )
@@ -642,17 +652,15 @@ export function initMcpAppServer(): McpServer {
       title: "Display Modes Inspector (Undeclared)",
       description:
         "Test that the host respects declared modes — this app only declares inline but renders fullscreen/pip buttons",
-      inputSchema: {},
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
-      },
+      inputSchema: withFooterInputSchema({}),
+      outputSchema: withFooterOutputSchema({}),
       _meta: {
         ui: {
           resourceUri: INSPECT_DISPLAY_MODES_UNDECLARED_URI,
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -660,9 +668,7 @@ export function initMcpAppServer(): McpServer {
             text: `Display Modes Inspector loaded. Declared modes: inline only (fullscreen/pip undeclared but UI has buttons)`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
-        },
+        structuredContent: buildFooterStructuredContent(args.joke),
       }
     }
   )
@@ -707,17 +713,15 @@ export function initMcpAppServer(): McpServer {
       title: "Transparency Inspector",
       description:
         "Test whether the host allows iframe transparency across light and dark color schemes",
-      inputSchema: {},
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
-      },
+      inputSchema: withFooterInputSchema({}),
+      outputSchema: withFooterOutputSchema({}),
       _meta: {
         ui: {
           resourceUri: INSPECT_TRANSPARENCY_URI,
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -725,9 +729,7 @@ export function initMcpAppServer(): McpServer {
             text: `Transparency Inspector loaded. Checking iframe transparency across color schemes.`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
-        },
+        structuredContent: buildFooterStructuredContent(args.joke),
       }
     }
   )
@@ -776,17 +778,15 @@ export function initMcpAppServer(): McpServer {
       title: "Visibility Inspector",
       description:
         "Open the visibility inspector to test _meta.ui.visibility filtering",
-      inputSchema: {},
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
-      },
+      inputSchema: withFooterInputSchema({}),
+      outputSchema: withFooterOutputSchema({}),
       _meta: {
         ui: {
           resourceUri: INSPECT_VISIBILITY_URI,
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -794,9 +794,7 @@ export function initMcpAppServer(): McpServer {
             text: `Visibility Inspector loaded. This page tests that hosts correctly filter tools based on _meta.ui.visibility.`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
-        },
+        structuredContent: buildFooterStructuredContent(args.joke),
       }
     }
   )
@@ -966,17 +964,15 @@ export function initMcpAppServer(): McpServer {
       title: "Model Context Inspector",
       description:
         "Test ui/update-model-context — send context updates from the app to the host model",
-      inputSchema: {},
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
-      },
+      inputSchema: withFooterInputSchema({}),
+      outputSchema: withFooterOutputSchema({}),
       _meta: {
         ui: {
           resourceUri: INSPECT_MODEL_CONTEXT_URI,
         },
       },
     },
-    async () => {
+    async (args) => {
       return {
         content: [
           {
@@ -984,9 +980,7 @@ export function initMcpAppServer(): McpServer {
             text: `Model Context Inspector loaded. Use the counter or manual form to send ui/update-model-context requests.`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
-        },
+        structuredContent: buildFooterStructuredContent(args.joke),
       }
     }
   )
@@ -1035,18 +1029,17 @@ export function initMcpAppServer(): McpServer {
       title: "Media Player Inspector",
       description:
         "Launch a media player demo that switches between open video and audio content inside the MCP app host",
-      inputSchema: {
+      inputSchema: withFooterInputSchema({
         mediaType: z
           .enum(["video", "audio"])
           .describe("Which media mode to open first")
           .optional(),
-      },
-      outputSchema: {
-        timestamp: z.string().describe("The timestamp of the inspection"),
+      }),
+      outputSchema: withFooterOutputSchema({
         mediaType: z
           .enum(["video", "audio"])
           .describe("The initially selected media mode"),
-      },
+      }),
       _meta: {
         ui: {
           resourceUri: INSPECT_MEDIA_PLAYER_URI,
@@ -1063,10 +1056,9 @@ export function initMcpAppServer(): McpServer {
             text: `Media Player Inspector loaded. Showing the ${mediaType} demo inside the MCP app host.`,
           },
         ],
-        structuredContent: {
-          timestamp: new Date().toISOString(),
+        structuredContent: buildFooterStructuredContent(args.joke, {
           mediaType,
-        },
+        }),
       }
     }
   )

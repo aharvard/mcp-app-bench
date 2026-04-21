@@ -1268,6 +1268,97 @@
     { id: "inspect-model-context", icon: "🧠", label: "Model Context" },
     { id: "inspect-media-player", icon: "🎬", label: "Media Player" },
   ]
+  let currentInspectorFooterId = null
+
+  function getFooterStructuredContent() {
+    const toolResult = currentToolData.toolResult
+    if (
+      !toolResult ||
+      !toolResult.structuredContent ||
+      typeof toolResult.structuredContent !== "object"
+    ) {
+      return null
+    }
+
+    return toolResult.structuredContent
+  }
+
+  function renderFooterMetadata() {
+    const structuredContent = getFooterStructuredContent()
+    if (!structuredContent) {
+      return ""
+    }
+
+    const timestamp =
+      typeof structuredContent.timestamp === "string"
+        ? structuredContent.timestamp
+        : null
+    const joke =
+      typeof structuredContent.joke === "string"
+        ? structuredContent.joke.trim()
+        : ""
+
+    if (!timestamp && !joke) {
+      return ""
+    }
+
+    let html = '<div class="inspector-footer-meta">'
+
+    if (timestamp) {
+      html +=
+        '<div class="inspector-footer-timestamp">Inspection time: ' +
+        escapeHtml(timestamp) +
+        "</div>"
+    }
+
+    if (joke) {
+      html +=
+        '<div class="inspector-footer-joke">' + escapeHtml(joke) + "</div>"
+    }
+
+    html += "</div>"
+    return html
+  }
+
+  function renderInspectorFooter() {
+    const footer = document.getElementById("inspector-footer")
+    if (!footer) return
+
+    footer.innerHTML =
+      '<div class="inspector-footer-nav">' +
+      inspectors
+        .map(function (inspector) {
+          const isCurrent = inspector.id === currentInspectorFooterId
+          return (
+            '<button class="inspector-footer-btn' +
+            (isCurrent ? " is-current" : "") +
+            '" data-tool="' +
+            inspector.id +
+            '"' +
+            (isCurrent ? " disabled" : "") +
+            ">" +
+            '<span class="inspector-footer-btn-icon">' +
+            inspector.icon +
+            "</span>" +
+            inspector.label +
+            "</button>"
+          )
+        })
+        .join("") +
+      "</div>" +
+      renderFooterMetadata()
+
+    footer.querySelectorAll(".inspector-footer-btn").forEach(function (btn) {
+      if (!btn.disabled) {
+        btn.addEventListener("click", function () {
+          const toolName = btn.getAttribute("data-tool")
+          if (toolName) {
+            navigateToInspector(toolName)
+          }
+        })
+      }
+    })
+  }
 
   function navigateToInspector(toolName) {
     sendRequest("ui/message", {
@@ -1288,39 +1379,8 @@
   }
 
   function setupInspectorFooter(currentInspectorId) {
-    const footer = document.getElementById("inspector-footer")
-    if (!footer) return
-
-    footer.innerHTML = inspectors
-      .map(function (inspector) {
-        const isCurrent = inspector.id === currentInspectorId
-        return (
-          '<button class="inspector-footer-btn' +
-          (isCurrent ? " is-current" : "") +
-          '" data-tool="' +
-          inspector.id +
-          '"' +
-          (isCurrent ? " disabled" : "") +
-          ">" +
-          '<span class="inspector-footer-btn-icon">' +
-          inspector.icon +
-          "</span>" +
-          inspector.label +
-          "</button>"
-        )
-      })
-      .join("")
-
-    footer.querySelectorAll(".inspector-footer-btn").forEach(function (btn) {
-      if (!btn.disabled) {
-        btn.addEventListener("click", function () {
-          const toolName = btn.getAttribute("data-tool")
-          if (toolName) {
-            navigateToInspector(toolName)
-          }
-        })
-      }
-    })
+    currentInspectorFooterId = currentInspectorId || null
+    renderInspectorFooter()
   }
 
   // ==========================================================================
@@ -1343,6 +1403,7 @@
   // Auto-set ready when tool-result is received
   window.addEventListener("mcp-tool-result", function () {
     setReady()
+    renderInspectorFooter()
   })
 
   // ==========================================================================

@@ -1609,11 +1609,19 @@ h1 {
 
 .inspector-footer {
   display: flex;
-  justify-content: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
   padding: 1rem 24px;
   border-top: 1px solid var(--border);
+}
+
+.inspector-footer-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .inspector-footer-btn {
@@ -1649,6 +1657,32 @@ h1 {
 .inspector-footer-btn-icon {
   font-size: 0.875rem;
   line-height: 1;
+}
+
+.inspector-footer-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.inspector-footer-timestamp {
+  color: var(--text-secondary);
+  font-family: "Victor Mono", ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.inspector-footer-joke {
+  color: var(--text-secondary);
+  font-family: "Victor Mono", ui-monospace, monospace;
+  font-size: 0.5rem;
+  line-height: 1.4;
+  opacity: 0.85;
+  text-align: center;
+  max-width: 56rem;
 }
 
 /* ==========================================================================

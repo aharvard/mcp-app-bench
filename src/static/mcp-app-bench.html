@@ -183,6 +183,7 @@
           </div>
         </div>
       </div>
+      <div id="inspector-footer" class="inspector-footer"></div>
     </div>
 
     <script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
@@ -197,6 +198,8 @@
             console.log("[Launcher] Initialized with host:", result.hostInfo)
           },
         })
+
+        MCPAppShell.setupInspectorFooter(null)
 
         // Listen for tool result to show content
         window.addEventListener("mcp-tool-result", function () {
