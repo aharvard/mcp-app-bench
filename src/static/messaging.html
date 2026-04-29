@@ -30,7 +30,6 @@
                     <button class="action-btn" id="btn-open-link">ui/open-link</button>
                     <button class="action-btn" id="btn-message">ui/message</button>
                     <button class="action-btn" id="btn-size-change">ui/notifications/size-changed</button>
-                    <button class="action-btn" id="btn-get-context">ui/get-context</button>
                   </div>
                 </div>
                 <div class="messaging-buttons-group">
@@ -149,15 +148,6 @@
         document.getElementById('btn-size-change').addEventListener('click', function () {
           MCPAppShell.sendSizeChanged();
           console.log('[Messaging] ui/notifications/size-changed sent');
-        });
-
-        // UI → Host: Get Context
-        document.getElementById('btn-get-context').addEventListener('click', function () {
-          MCPAppShell.sendRequest('ui/get-context', {}).then(function (result) {
-            console.log('[Messaging] ui/get-context response:', result);
-          }).catch(function (error) {
-            console.error('[Messaging] ui/get-context error:', error);
-          });
         });
 
         // UI → Server: Call Tool
