@@ -766,25 +766,34 @@
   /**
    * Generate test cases from the hostContextSchema
    * Only generates tests for leaf nodes (properties without children)
-   * Returns an array of { path, expectedType, enumValues?, optional, parentPath? }
+   * Returns leaf-node tests with optional ancestry metadata for scorecards.
    */
-  function generateTestCases(schema, prefix, parentOptional) {
+  function generateTestCases(
+    schema,
+    prefix,
+    parentOptional,
+    optionalAncestorPath
+  ) {
     const tests = []
     prefix = prefix || ""
     parentOptional = parentOptional || false
+    optionalAncestorPath = optionalAncestorPath || null
 
     for (const key in schema) {
       const fullPath = prefix ? prefix + "." + key : key
       const entry = schema[key]
       // A property is effectively optional if it's marked optional OR any parent is optional
       const isOptional = parentOptional || !!entry.optional
+      const nextOptionalAncestorPath =
+        optionalAncestorPath || (entry.optional ? fullPath : null)
 
       if (entry.children) {
         // This is a parent node - recurse into children, don't add a test for this node
         const childTests = generateTestCases(
           entry.children,
           fullPath,
-          isOptional
+          isOptional,
+          nextOptionalAncestorPath
         )
         tests.push.apply(tests, childTests)
       } else {
@@ -794,6 +803,8 @@
           expectedType: entry.type,
           enumValues: entry.enum || null,
           optional: isOptional,
+          declaredOptional: !!entry.optional,
+          optionalAncestorPath: optionalAncestorPath,
           parentPath: prefix || null,
         })
       }

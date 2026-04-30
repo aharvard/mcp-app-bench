@@ -56,6 +56,20 @@
     <script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
     <script>
       (function () {
+        let sizeChangeOffset = 0;
+
+        function getSizeChangeSpacer() {
+          let spacer = document.getElementById('size-change-spacer');
+          if (!spacer) {
+            spacer = document.createElement('div');
+            spacer.id = 'size-change-spacer';
+            spacer.setAttribute('aria-hidden', 'true');
+            spacer.style.pointerEvents = 'none';
+            document.getElementById('app-content').appendChild(spacer);
+          }
+          return spacer;
+        }
+
         function renderMessageLog() {
           const container = document.getElementById('message-log-content');
           if (!container) return;
@@ -146,8 +160,12 @@
 
         // UI → Host: Size Change
         document.getElementById('btn-size-change').addEventListener('click', function () {
+          sizeChangeOffset += 20;
+          getSizeChangeSpacer().style.height = sizeChangeOffset + 'px';
           MCPAppShell.sendSizeChanged();
-          console.log('[Messaging] ui/notifications/size-changed sent');
+          console.log('[Messaging] ui/notifications/size-changed sent', {
+            addedHeight: sizeChangeOffset
+          });
         });
 
         // UI → Server: Call Tool

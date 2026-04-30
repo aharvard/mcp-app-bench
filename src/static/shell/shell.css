@@ -1263,6 +1263,14 @@ h1 {
   color: var(--text-secondary);
 }
 
+.test-count.is-optional {
+  color: #38bdf8;
+}
+
+.theme-light .test-count.is-optional {
+  color: #0284c7;
+}
+
 .test-count.is-invalid {
   color: #f87171;
 }
@@ -1350,6 +1358,10 @@ h1 {
   color: #fbbf24;
 }
 
+.test-group-icon.is-optional {
+  color: var(--text-secondary);
+}
+
 .test-group-icon.is-pending {
   color: var(--text-secondary);
 }
@@ -1396,6 +1408,14 @@ h1 {
   color: #d97706;
 }
 
+.test-group-badge.is-optional {
+  color: #38bdf8;
+}
+
+.theme-light .test-group-badge.is-optional {
+  color: #0284c7;
+}
+
 .test-group-content {
   display: none;
   border-top: 1px solid var(--border);
@@ -1435,6 +1455,11 @@ h1 {
 .test-item-icon.is-missing {
   color: var(--text-secondary);
   opacity: 0.5;
+}
+
+.test-item-icon.is-optional {
+  color: var(--text-secondary);
+  opacity: 0.55;
 }
 
 .test-item-icon.is-invalid {
@@ -1501,6 +1526,10 @@ h1 {
 
 .theme-light .test-item-message.is-warn {
   color: #d97706;
+}
+
+.test-item-message.is-optional {
+  color: var(--text-secondary);
 }
 
 /* Unexpected Properties Section */
