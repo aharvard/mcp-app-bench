@@ -12,8 +12,16 @@
 
   let requestId = 1
   const pendingRequests = new Map()
-  const DEFAULT_REQUEST_TIMEOUT_MS = 10000
+  // Requests that timed out locally, kept so a late host reply can still be
+  // logged instead of silently dropped.
+  const expiredRequests = new Map()
+  const MAX_EXPIRED_REQUESTS = 50
+  const INITIALIZE_TIMEOUT_MS = 10000
+  // Ordinary requests may wait on the user (open-link confirmations) or on a
+  // tool call, so the default is generous. Pass { timeoutMs: 0 } to disable.
+  const DEFAULT_REQUEST_TIMEOUT_MS = 60000
   let currentHostInfo = null
+  let currentCompatibility = null
   let currentToolData = {
     toolInput: null,
     toolInputPartial: null,
@@ -22,6 +30,7 @@
   }
   let isReady = false
   let connectionState = "closed"
+  let sizeReportingEnabled = false
   let resizeObserver = null
   let lastReportedHeight = null
   let pendingReportedHeight = null
@@ -309,7 +318,7 @@
   // ==========================================================================
 
   function sendSizeChanged() {
-    if (connectionState !== "initialized") return
+    if (!sizeReportingEnabled) return
 
     const measuredHeight = getMeasuredContentHeight()
 
@@ -367,7 +376,28 @@
     )
   }
 
-  function sendRequest(method, params) {
+  // JSON-RPC params are optional; omit the key entirely rather than posting an
+  // own `params: undefined` property that strict hosts would reject.
+  function withParams(message, params) {
+    if (params !== undefined) message.params = params
+    return message
+  }
+
+  function rememberExpiredRequest(id, method) {
+    expiredRequests.set(id, method)
+    if (expiredRequests.size > MAX_EXPIRED_REQUESTS) {
+      expiredRequests.delete(expiredRequests.keys().next().value)
+    }
+  }
+
+  /**
+   * Send a JSON-RPC request to the host.
+   * options.timeoutMs — milliseconds before the request rejects locally.
+   *   Defaults to DEFAULT_REQUEST_TIMEOUT_MS; 0 or a non-finite value disables
+   *   the timeout so user-gated requests can wait indefinitely.
+   */
+  function sendRequest(method, params, options) {
+    options = options || {}
     return new Promise((resolve, reject) => {
       if (
         connectionState !== "initialized" &&
@@ -377,26 +407,30 @@
         return
       }
       const id = requestId++
-      const timeoutId = window.setTimeout(function () {
-        if (!pendingRequests.has(id)) return
-        pendingRequests.delete(id)
-        reject(new Error(method + " request timed out"))
-      }, DEFAULT_REQUEST_TIMEOUT_MS)
-      pendingRequests.set(id, {
-        resolve,
-        reject,
-        method,
-        params,
-        timeoutId,
-      })
+      const timeoutMs =
+        typeof options.timeoutMs === "number"
+          ? options.timeoutMs
+          : DEFAULT_REQUEST_TIMEOUT_MS
+      let timeoutId = null
+      if (Number.isFinite(timeoutMs) && timeoutMs > 0) {
+        timeoutId = window.setTimeout(function () {
+          if (!pendingRequests.has(id)) return
+          pendingRequests.delete(id)
+          rememberExpiredRequest(id, method)
+          console.warn(
+            "[MCP Shell] " +
+              method +
+              " request timed out after " +
+              timeoutMs +
+              "ms"
+          )
+          reject(new Error(method + " request timed out"))
+        }, timeoutMs)
+      }
+      pendingRequests.set(id, { resolve, reject, method, timeoutId })
       logMessage("sent", method + " (request)", params)
       window.parent.postMessage(
-        {
-          jsonrpc: "2.0",
-          id: id,
-          method: method,
-          params: params,
-        },
+        withParams({ jsonrpc: "2.0", id: id, method: method }, params),
         "*"
       )
     })
@@ -413,11 +447,7 @@
       return
     logMessage("sent", method + " (notification)", params)
     window.parent.postMessage(
-      {
-        jsonrpc: "2.0",
-        method: method,
-        params: params,
-      },
+      withParams({ jsonrpc: "2.0", method: method }, params),
       "*"
     )
   }
@@ -1120,7 +1150,9 @@
       )
     )
       return "invalid"
-    if ("params" in data && !isObject(data.params)) return "invalid"
+    // MCP params are always objects; an own `params: undefined` (which
+    // structured clone preserves) is treated as absent, not as malformed.
+    if (data.params !== undefined && !isObject(data.params)) return "invalid"
 
     if (hasMethod) {
       if (typeof data.method !== "string" || hasResult || hasError) {
@@ -1129,10 +1161,11 @@
       return hasId ? "request" : "notification"
     }
 
+    // JSON-RPC permits any `result` value; the bench records whatever the host
+    // actually sent rather than timing the request out.
     if (
       hasId &&
       hasResult !== hasError &&
-      (!hasResult || isObject(data.result)) &&
       (!hasError ||
         (isObject(data.error) &&
           Number.isInteger(data.error.code) &&
@@ -1144,19 +1177,15 @@
     return "invalid"
   }
 
-  function sendResponse(id, result) {
+  function sendResponse(id, method, result) {
+    logMessage("sent", method + " (response)", result)
     window.parent.postMessage({ jsonrpc: "2.0", id: id, result: result }, "*")
   }
 
-  function sendErrorResponse(id, code, message) {
-    window.parent.postMessage(
-      {
-        jsonrpc: "2.0",
-        id: id,
-        error: { code: code, message: message },
-      },
-      "*"
-    )
+  function sendErrorResponse(id, method, code, message) {
+    const error = { code: code, message: message }
+    logMessage("sent", method + " (error)", error)
+    window.parent.postMessage({ jsonrpc: "2.0", id: id, error: error }, "*")
   }
 
   function setConnectionState(nextState, error) {
@@ -1171,7 +1200,7 @@
   function failPendingRequests(reason) {
     const error = reason instanceof Error ? reason : new Error(String(reason))
     pendingRequests.forEach(function (pending) {
-      window.clearTimeout(pending.timeoutId)
+      if (pending.timeoutId !== null) window.clearTimeout(pending.timeoutId)
       pending.reject(error)
     })
     pendingRequests.clear()
@@ -1191,6 +1220,10 @@
 
   function startAutomaticSizing() {
     if (resizeObserver) return
+    if (typeof ResizeObserver !== "function") {
+      sendSizeChanged()
+      return
+    }
 
     resizeObserver = new ResizeObserver(sendSizeChanged)
     resizeObserver.observe(document.body)
@@ -1201,60 +1234,38 @@
     sendSizeChanged()
   }
 
+  function enableSizeReporting() {
+    sizeReportingEnabled = true
+    startAutomaticSizing()
+  }
+
+  function disableSizeReporting() {
+    sizeReportingEnabled = false
+    stopAutomaticSizing()
+  }
+
   function closeConnection(reason) {
     setConnectionState("closed")
-    stopAutomaticSizing()
+    disableSizeReporting()
     failPendingRequests(reason || new Error("MCP connection closed"))
   }
 
-  // Validate known stable-profile fields; unknown extension fields are preserved.
-  // Do not enforce the grading schema's unionGroups: empty dimensions are valid.
-  function validateFields(value, fields, path) {
-    for (const [key, field] of Object.entries(fields)) {
-      const child = value[key]
-      const childPath = path + "." + key
-      if (child === undefined && field.optional) continue
-      const type = Array.isArray(child)
-        ? "array"
-        : child === null
-          ? "null"
-          : typeof child
-      const types = Array.isArray(field.type) ? field.type : [field.type]
-      if (
-        !types.includes(type) ||
-        (type === "number" && !Number.isFinite(child)) ||
-        (field.enum && !field.enum.includes(child))
-      ) {
-        throw new Error("Invalid initialization field: " + childPath)
-      }
-      if (field.children) validateFields(child, field.children, childPath)
-      if (field.items) {
-        child.forEach((item, index) =>
-          validateFields(
-            { item },
-            { item: field.items },
-            childPath + "[" + index + "]"
-          )
-        )
-      }
+  // Only reject what the shell cannot operate without: a string protocol
+  // version and object-shaped (or absent) top-level sections. Value-level
+  // conformance of hostContext is the grading schema's job, so an off-spec
+  // theme or platform is graded rather than turned into a connection failure.
+  function optionalObjectSection(value, name) {
+    if (value === undefined || value === null) return {}
+    if (!isObject(value)) {
+      throw new Error("Initialization result field must be an object: " + name)
     }
+    return value
   }
 
-  function validateInitializeResult(result) {
+  function normalizeInitializeResult(result) {
     if (!isObject(result)) {
       throw new Error("Host returned an invalid initialization result")
     }
-
-    let compatibilityMode = null
-    if (!result.hostInfo && isObject(result.appInfo)) {
-      result.hostInfo = result.appInfo
-      compatibilityMode = "legacy-app-info"
-    }
-    if (!result.hostCapabilities && isObject(result.appCapabilities)) {
-      result.hostCapabilities = result.appCapabilities
-      compatibilityMode = "legacy-app-info"
-    }
-
     if (
       typeof result.protocolVersion !== "string" ||
       !result.protocolVersion.trim()
@@ -1263,79 +1274,37 @@
         "Initialization result is missing a valid protocolVersion"
       )
     }
-    if (
-      !isObject(result.hostInfo) ||
-      typeof result.hostInfo.name !== "string" ||
-      typeof result.hostInfo.version !== "string"
-    ) {
-      throw new Error("Initialization result is missing valid hostInfo")
+
+    // Legacy hosts (MCP Jam) reply with appInfo/appCapabilities.
+    let legacyAliases = false
+    let hostInfo = result.hostInfo
+    if (hostInfo == null && isObject(result.appInfo)) {
+      hostInfo = result.appInfo
+      legacyAliases = true
     }
-    if (!isObject(result.hostCapabilities)) {
-      throw new Error("Initialization result is missing hostCapabilities")
-    }
-    if (!isObject(result.hostContext)) {
-      throw new Error("Initialization result is missing hostContext")
+    let hostCapabilities = result.hostCapabilities
+    if (hostCapabilities == null && isObject(result.appCapabilities)) {
+      hostCapabilities = result.appCapabilities
+      legacyAliases = true
     }
 
-    const optionalObject = { type: "object", optional: true }
-    const optionalBoolean = { type: "boolean", optional: true }
-    const listCapability = {
-      ...optionalObject,
-      children: { listChanged: optionalBoolean },
-    }
-    const domains = {
-      type: "array",
-      optional: true,
-      items: { type: "string" },
-    }
-    validateFields(
-      result.hostCapabilities,
-      {
-        experimental: optionalObject,
-        openLinks: optionalObject,
-        serverTools: listCapability,
-        serverResources: listCapability,
-        logging: optionalObject,
-        sandbox: {
-          ...optionalObject,
-          children: {
-            permissions: {
-              ...optionalObject,
-              children: {
-                camera: optionalObject,
-                microphone: optionalObject,
-                geolocation: optionalObject,
-                clipboardWrite: optionalObject,
-              },
-            },
-            csp: {
-              ...optionalObject,
-              children: {
-                connectDomains: domains,
-                resourceDomains: domains,
-                frameDomains: domains,
-                baseUriDomains: domains,
-              },
-            },
-          },
-        },
+    return {
+      hostInfo: {
+        protocolVersion: result.protocolVersion,
+        hostInfo: optionalObjectSection(hostInfo, "hostInfo"),
+        hostCapabilities: optionalObjectSection(
+          hostCapabilities,
+          "hostCapabilities"
+        ),
+        hostContext: optionalObjectSection(result.hostContext, "hostContext"),
       },
-      "hostCapabilities"
-    )
-    validateFields(
-      result.hostContext,
-      {
-        ...hostContextSchema.hostContext.children,
-        availableDisplayModes: {
-          type: "array",
-          optional: true,
-          items: { type: "string" },
-        },
+      compatibility: {
+        protocolVersion: result.protocolVersion,
+        benchVersion: MCP_APPS_SPEC_VERSION,
+        matchesBenchVersion: result.protocolVersion === MCP_APPS_SPEC_VERSION,
+        legacyAliases: legacyAliases,
       },
-      "hostContext"
-    )
-
-    return compatibilityMode
+    }
   }
 
   function showConnectionError(error) {
@@ -1358,46 +1327,69 @@
       return
     }
 
-    // Handle response to our request
-    if (
-      (messageType === "success-response" ||
-        messageType === "error-response") &&
-      pendingRequests.has(data.id)
-    ) {
-      const pending = pendingRequests.get(data.id)
-      pendingRequests.delete(data.id)
-      window.clearTimeout(pending.timeoutId)
-      if (messageType === "error-response") {
-        logMessage("received", pending.method + " (error)", data.error)
-        pending.reject(data.error)
-      } else {
-        logMessage("received", pending.method + " (response)", data.result)
-        pending.resolve(data.result)
-      }
-      return
-    }
-
+    // Handle responses to our requests
     if (
       messageType === "success-response" ||
       messageType === "error-response"
     ) {
+      const isError = messageType === "error-response"
+      const payload = isError ? data.error : data.result
+      const pending = pendingRequests.get(data.id)
+      if (pending) {
+        pendingRequests.delete(data.id)
+        if (pending.timeoutId !== null) window.clearTimeout(pending.timeoutId)
+        logMessage(
+          "received",
+          pending.method + (isError ? " (error)" : " (response)"),
+          payload
+        )
+        if (isError) pending.reject(payload)
+        else pending.resolve(payload)
+        return
+      }
+      // A reply that arrived after the local timeout, or one we never asked
+      // for: record it so the inspectors can show what the host actually did.
+      const expiredMethod = expiredRequests.get(data.id)
+      if (expiredMethod !== undefined) {
+        expiredRequests.delete(data.id)
+        logMessage(
+          "received",
+          expiredMethod + (isError ? " (late error)" : " (late response)"),
+          payload
+        )
+      } else {
+        logMessage(
+          "received",
+          "unmatched " +
+            (isError ? "error" : "response") +
+            " (id " +
+            String(data.id) +
+            ")",
+          payload
+        )
+      }
       return
     }
 
+    // Handle requests from host
     if (messageType === "request") {
+      logMessage("received", data.method + " (request)", data.params)
       if (data.method === "ui/resource-teardown") {
-        sendResponse(data.id, {})
+        sendResponse(data.id, data.method, {})
         closeConnection(new Error("Host requested resource teardown"))
       } else {
-        sendErrorResponse(data.id, -32601, "Method not found: " + data.method)
+        sendErrorResponse(
+          data.id,
+          data.method,
+          -32601,
+          "Method not found: " + data.method
+        )
       }
       return
     }
 
     // Handle notifications from host
-    if (data.method) {
-      logMessage("received", data.method, data.params)
-    }
+    logMessage("received", data.method, data.params)
 
     // Handle host-context-changed notification
     if (data.method === "ui/notifications/host-context-changed") {
@@ -1452,6 +1444,14 @@
   // Initialization
   // ==========================================================================
 
+  /**
+   * Perform the ui/initialize handshake.
+   *
+   * Resolves with the normalized host info on success and with `null` on
+   * failure. Failure is reported through the connection state, the
+   * `mcp-connection-state-changed` event, and the visible status text rather
+   * than by rejecting, so pages can call this without a `.catch`.
+   */
   async function initialize(options) {
     options = options || {}
     const clientName = options.clientName || "MCP App"
@@ -1461,8 +1461,11 @@
     if (connectionState === "connecting" || connectionState === "initialized") {
       throw new Error("MCP connection is already " + connectionState)
     }
+    disableSizeReporting()
     setConnectionState("connecting")
 
+    let hostResponded = false
+    let normalized
     try {
       const availableDisplayModes =
         options.availableDisplayModes === null
@@ -1483,72 +1486,71 @@
           ...(title ? { title: title } : {}),
         },
       }
-      // MCP Jam compatibility - also send as appInfo/appCapabilities
+      // MCP Jam compatibility - also send as appInfo
       initParams.appInfo = initParams.clientInfo
-      if (!initParams.appCapabilities) {
-        initParams.appCapabilities = initParams.capabilities
-      }
 
-      const result = await sendRequest("ui/initialize", initParams)
-      if (connectionState !== "connecting") return
-      const compatibilityMode = validateInitializeResult(result)
-
-      // Apply initial theme and display mode
-      if (result.hostContext && result.hostContext.theme) {
-        setTheme(result.hostContext.theme)
-      }
-      if (result.hostContext && result.hostContext.displayMode) {
-        setDisplayMode(result.hostContext.displayMode)
-      }
-
-      // Store host info
-      currentHostInfo = {
-        protocolVersion: result.protocolVersion,
-        hostInfo: result.hostInfo,
-        hostCapabilities: result.hostCapabilities,
-        hostContext: result.hostContext,
-        compatibilityMode: compatibilityMode,
-      }
-
-      // Update subtitle if present
-      const subtitle = document.getElementById("host-info-subtitle")
-      if (subtitle && result.hostInfo) {
-        const name = result.hostInfo.name || "Unknown Host"
-        const version = result.hostInfo.version || ""
-        const hostDisplay = version ? name + " v" + version : name
-        subtitle.textContent =
-          "Current host: " +
-          hostDisplay +
-          " · MCP Apps protocol: " +
-          result.protocolVersion +
-          " · Bench reference: " +
-          MCP_APPS_SPEC_VERSION +
-          (result.protocolVersion !== MCP_APPS_SPEC_VERSION
-            ? " (different versions; results are a reference comparison)"
-            : "")
-      }
-
-      // Send initialized notification
-      sendNotification("ui/notifications/initialized")
-      setConnectionState("initialized")
-      startAutomaticSizing()
-
-      // Call the callback
-      onInitialized(result)
-
-      // Dispatch event
-      window.dispatchEvent(
-        new CustomEvent("mcp-initialized", { detail: result })
-      )
+      const result = await sendRequest("ui/initialize", initParams, {
+        timeoutMs: INITIALIZE_TIMEOUT_MS,
+      })
+      hostResponded = true
+      normalized = normalizeInitializeResult(result)
     } catch (error) {
       console.error("[MCP Shell] Initialization error:", error)
-      stopAutomaticSizing()
       failPendingRequests(error)
-      if (connectionState === "closed") throw error
+      // Teardown during the handshake already closed the connection.
+      if (connectionState === "closed") return null
       setConnectionState("failed", error)
       showConnectionError(error)
-      throw error
+      // The host answered, so it is rendering this view: keep reporting our
+      // size so the connection error is readable instead of clipped.
+      if (hostResponded) enableSizeReporting()
+      return null
     }
+
+    // The handshake succeeded. From here on, failures in page code must not
+    // be mistaken for a broken connection.
+    const hostInfo = normalized.hostInfo
+    if (hostInfo.hostContext.theme) {
+      setTheme(hostInfo.hostContext.theme)
+    }
+    if (hostInfo.hostContext.displayMode) {
+      setDisplayMode(hostInfo.hostContext.displayMode)
+    }
+
+    currentHostInfo = hostInfo
+    currentCompatibility = normalized.compatibility
+
+    const subtitle = document.getElementById("host-info-subtitle")
+    if (subtitle) {
+      const name = hostInfo.hostInfo.name || "Unknown Host"
+      const version = hostInfo.hostInfo.version || ""
+      const hostDisplay = version ? name + " v" + version : name
+      subtitle.textContent =
+        "Current host: " +
+        hostDisplay +
+        " · MCP Apps protocol: " +
+        hostInfo.protocolVersion +
+        " · Bench reference: " +
+        MCP_APPS_SPEC_VERSION +
+        (currentCompatibility.matchesBenchVersion
+          ? ""
+          : " (different versions; results are a reference comparison)")
+    }
+
+    sendNotification("ui/notifications/initialized")
+    setConnectionState("initialized")
+    enableSizeReporting()
+
+    try {
+      onInitialized(hostInfo)
+    } catch (error) {
+      console.error("[MCP Shell] onInitialized callback failed:", error)
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("mcp-initialized", { detail: hostInfo })
+    )
+    return hostInfo
   }
 
   // ==========================================================================
@@ -1729,6 +1731,12 @@
     isReady: checkReady,
     getConnectionState: function () {
       return connectionState
+    },
+    // Bench-side view of the handshake: protocol version vs. bench reference
+    // and whether legacy appInfo aliases were used. Kept separate from
+    // getHostInfo() so that object only ever contains what the host sent.
+    getCompatibility: function () {
+      return currentCompatibility
     },
 
     // Loading state

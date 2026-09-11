@@ -223,10 +223,16 @@
 
         // ── Test 3: Host Theme Alignment ────────────────────────────────
 
-        var hostTheme = null
+        // The shell keeps hostContext current (including host-context-changed
+        // updates), so read the theme from it rather than tracking a copy.
+        function getHostTheme() {
+          var hostInfo = MCPAppShell.getHostInfo()
+          return hostInfo && hostInfo.hostContext && hostInfo.hostContext.theme
+        }
 
         function runThemeAlignmentTest() {
           var el = document.getElementById("theme-alignment-result")
+          var hostTheme = getHostTheme()
           if (!hostTheme) {
             el.className = "result unknown"
             el.textContent = "Waiting for host context..."
@@ -248,36 +254,30 @@
             (match ? "✓ Aligned" : "✗ Mismatch — may cause opacity issues")
         }
 
+        // Size reporting is handled by the shell's ResizeObserver once the
+        // host has answered ui/initialize; result cards resizing triggers it.
         function runAllTests() {
           runTransparencyTest()
           runColorSchemeTest()
           runThemeAlignmentTest()
-          MCPAppShell.sendSizeChanged()
         }
-
-        // ── Size reporting ──────────────────────────────────────────────
 
         window.addEventListener("mcp-host-context-changed", function (event) {
           if (event.detail && event.detail.theme) {
-            hostTheme = event.detail.theme
             runAllTests()
           }
         })
 
         // ── Initialize ──────────────────────────────────────────────────
 
+        // initialize() resolves with host info on success and null on failure;
+        // either way the visual checks still run so the page is never blank.
         MCPAppShell.initialize({
           title: "Transparency",
           clientName: "Transparency Inspector",
           clientVersion: "1.0.0",
           availableDisplayModes: null,
-          onInitialized: function (result) {
-            if (result && result.hostContext && result.hostContext.theme) {
-              hostTheme = result.hostContext.theme
-            }
-            runAllTests()
-          },
-        }).catch(function () {
+        }).then(function () {
           runAllTests()
         })
 

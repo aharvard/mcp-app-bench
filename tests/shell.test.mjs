@@ -107,6 +107,7 @@ function createHarness() {
         errors.push(args)
       },
       log() {},
+      warn() {},
     },
     CustomEvent: FakeCustomEvent,
     document: {
@@ -251,7 +252,7 @@ test("teardown is acknowledged and closes all pending requests", async () => {
   assert.equal(harness.shell.getConnectionState(), "closed")
 })
 
-test("malformed initialization fails visibly and sends no initialized notification", async () => {
+test("malformed initialization fails visibly, resolves null, and sends no initialized notification", async () => {
   const harness = createHarness()
   const initialized = harness.shell.initialize()
   const request = harness.messages.at(-1)
@@ -262,14 +263,42 @@ test("malformed initialization fails visibly and sends no initialized notificati
     result: { protocolVersion: 42 },
   })
 
-  await assert.rejects(initialized, /valid protocolVersion/)
+  // Failure is reported through state and visible text, not a rejection, so
+  // pages can call initialize() without a .catch.
+  assert.equal(await initialized, null)
   assert.equal(harness.shell.getConnectionState(), "failed")
+  assert.match(harness.loadingText.textContent, /valid protocolVersion/)
   assert.match(harness.loadingText.textContent, /Connection failed/)
   assert.equal(
     harness.messages.some(
       (message) => message.method === "ui/notifications/initialized"
     ),
     false
+  )
+})
+
+test("a host that answered with a broken result still receives size reports", async () => {
+  const harness = createHarness()
+  const initialized = harness.shell.initialize()
+  const request = harness.messages.at(-1)
+  harness.dispatch({
+    jsonrpc: "2.0",
+    id: request.id,
+    result: validInitializeResult({ hostContext: "dark" }),
+  })
+  assert.equal(await initialized, null)
+  assert.equal(harness.shell.getConnectionState(), "failed")
+  assert.match(
+    harness.loadingText.textContent,
+    /must be an object: hostContext/
+  )
+
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(
+    harness.messages.some(
+      (message) => message.method === "ui/notifications/size-changed"
+    ),
+    true
   )
 })
 
@@ -314,6 +343,8 @@ test("different protocol versions are displayed without blocking initialization"
     )
     assert.ok(h.subtitle.textContent.includes("Bench reference: 2026-01-26"))
     assert.match(h.subtitle.textContent, /reference comparison/)
+    assert.equal(h.shell.getCompatibility().matchesBenchVersion, false)
+    assert.equal(h.shell.getCompatibility().protocolVersion, protocolVersion)
     assert.ok(
       h.messages.some((m) => m.method === "ui/notifications/initialized")
     )
@@ -341,7 +372,6 @@ test("malformed envelopes cannot settle requests or close the connection", async
   for (const message of [
     { id, error: {} },
     { id, error: { code: "bad", message: "bad" } },
-    { id, result: null },
     { id, result: {}, error: { code: -1, message: "bad" } },
     { id: {}, method: "ui/resource-teardown", params: {} },
     { id: 90, method: "ui/resource-teardown", params: 7 },
@@ -353,6 +383,40 @@ test("malformed envelopes cannot settle requests or close the connection", async
   h.dispatch({ jsonrpc: "2.0", id, result: { ok: true } })
   assert.deepEqual(await pending, { ok: true })
   assert.equal(h.timers.size, 0)
+})
+
+test("non-object results settle requests with whatever the host sent", async () => {
+  const h = createHarness()
+  await initialize(h)
+  for (const result of [null, true, "done", [1]]) {
+    const pending = h.shell.sendRequest("probe", {})
+    const id = h.messages.at(-1).id
+    h.dispatch({ jsonrpc: "2.0", id, result })
+    assert.deepEqual(await pending, result)
+  }
+  assert.equal(h.errors.length, 0)
+  assert.equal(h.timers.size, 0)
+})
+
+test("outgoing messages omit params instead of posting params: undefined", async () => {
+  const h = createHarness()
+  await initialize(h)
+  const initialized = h.messages.find(
+    (m) => m.method === "ui/notifications/initialized"
+  )
+  assert.equal("params" in initialized, false)
+  h.shell.sendRequest("ping")
+  assert.equal("params" in h.messages.at(-1), false)
+  // Inbound messages with an own undefined params key are still accepted.
+  h.dispatch({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-cancelled",
+    params: undefined,
+  })
+  assert.equal(h.shell.getToolData().toolCancelled, undefined)
+  assert.equal(h.errors.length, 0)
+  const log = h.shell.getMessageLog()
+  assert.equal(log.at(-1).method, "ui/notifications/tool-cancelled")
 })
 
 test("requests named like notifications have no notification side effects", async () => {
@@ -383,9 +447,8 @@ test("closed and failed connections ignore inbound and outbound traffic", async 
       h.dispatch({ jsonrpc: "2.0", id: 40, method: "ui/resource-teardown" })
     } else {
       const pending = h.shell.initialize()
-      const rejected = assert.rejects(pending, /timed out/)
       h.expireTimers()
-      await rejected
+      assert.equal(await pending, null)
     }
     const count = h.messages.length
     h.dispatch({
@@ -411,49 +474,124 @@ test("closed and failed connections ignore inbound and outbound traffic", async 
 test("teardown during initialization stays closed", async () => {
   const h = createHarness()
   const pending = h.shell.initialize()
-  const rejected = assert.rejects(pending, /resource teardown/)
   h.dispatch({ jsonrpc: "2.0", id: 40, method: "ui/resource-teardown" })
-  await rejected
+  assert.equal(await pending, null)
   assert.equal(h.shell.getConnectionState(), "closed")
   assert.equal(h.timers.size, 0)
 })
 
-test("nested initialization fields reject invalid values", async () => {
+test("off-spec nested values are preserved for grading instead of failing initialization", async () => {
+  // These are exactly the deviations the Host Info scorecard exists to
+  // report; a conformance bench must connect to grade them.
   for (const overrides of [
     { hostCapabilities: { serverTools: 42 } },
-    { hostCapabilities: { serverResources: { listChanged: "yes" } } },
-    { hostCapabilities: { sandbox: { permissions: { camera: true } } } },
     { hostCapabilities: { sandbox: { csp: { connectDomains: [42] } } } },
-    { hostContext: { theme: 42 } },
+    { hostContext: { theme: "system" } },
+    { hostContext: { platform: "ios", displayMode: "modal" } },
+    { hostContext: { locale: null } },
     { hostContext: { availableDisplayModes: "inline" } },
-    { hostContext: { availableDisplayModes: [42] } },
     { hostContext: { safeAreaInsets: { top: 0 } } },
-    { hostContext: { styles: { css: { fonts: 42 } } } },
+    { hostContext: { toolInfo: { id: 1 } } },
+    { hostContext: { styles: { variables: { "--font-weight-normal": 400 } } } },
   ]) {
     const h = createHarness()
-    await assert.rejects(
-      initialize(h, validInitializeResult(overrides)),
-      /Invalid initialization field/
+    const result = validInitializeResult(overrides)
+    await initialize(h, result)
+    assert.equal(h.shell.getConnectionState(), "initialized")
+    assert.deepEqual(h.shell.getHostInfo().hostContext, result.hostContext)
+    assert.deepEqual(
+      h.shell.getHostInfo().hostCapabilities,
+      result.hostCapabilities
     )
-    assert.equal(h.shell.getConnectionState(), "failed")
-    assert.equal(
-      h.messages.some((m) => m.method === "ui/notifications/initialized"),
-      false
+    assert.ok(
+      h.messages.some((m) => m.method === "ui/notifications/initialized")
     )
   }
 })
 
-test("optional omissions, empty dimensions, and extensions remain valid", async () => {
-  const h = createHarness()
-  await initialize(
-    h,
-    validInitializeResult({
-      hostContext: { containerDimensions: {}, vendorField: { enabled: true } },
-      hostCapabilities: { serverTools: {}, vendorCapability: true },
+test("only non-object top-level sections fail initialization", async () => {
+  for (const [overrides, field] of [
+    [{ hostInfo: "Host" }, "hostInfo"],
+    [{ hostCapabilities: [] }, "hostCapabilities"],
+    [{ hostContext: 7 }, "hostContext"],
+  ]) {
+    const h = createHarness()
+    const initialized = h.shell.initialize()
+    h.dispatch({
+      jsonrpc: "2.0",
+      id: h.messages.at(-1).id,
+      result: validInitializeResult(overrides),
     })
-  )
+    assert.equal(await initialized, null)
+    assert.equal(h.shell.getConnectionState(), "failed")
+    assert.match(
+      h.subtitle.textContent,
+      new RegExp("must be an object: " + field)
+    )
+  }
+})
+
+test("missing optional sections default to empty objects and legacy aliases are recorded separately", async () => {
+  const h = createHarness()
+  await initialize(h, {
+    protocolVersion: "2026-01-26",
+    appInfo: { name: "Legacy Host", version: "0.1" },
+    appCapabilities: { legacy: true },
+    hostContext: null,
+  })
   assert.equal(h.shell.getConnectionState(), "initialized")
-  assert.equal(h.shell.getHostInfo().hostContext.vendorField.enabled, true)
+  // Objects built inside the sandbox have a different realm prototype, so
+  // compare plain JSON copies.
+  const hostInfo = h.shell.getHostInfo()
+  assert.deepEqual(JSON.parse(JSON.stringify(hostInfo)), {
+    protocolVersion: "2026-01-26",
+    hostInfo: { name: "Legacy Host", version: "0.1" },
+    hostCapabilities: { legacy: true },
+    hostContext: {},
+  })
+  assert.equal("compatibilityMode" in hostInfo, false)
+  assert.deepEqual(JSON.parse(JSON.stringify(h.shell.getCompatibility())), {
+    protocolVersion: "2026-01-26",
+    benchVersion: "2026-01-26",
+    matchesBenchVersion: true,
+    legacyAliases: true,
+  })
+  assert.match(h.subtitle.textContent, /Legacy Host v0\.1/)
+
+  const bare = createHarness()
+  await initialize(bare, { protocolVersion: "2026-01-26" })
+  assert.equal(bare.shell.getConnectionState(), "initialized")
+  assert.match(bare.subtitle.textContent, /Current host: Unknown Host/)
+  assert.equal(bare.shell.getCompatibility().legacyAliases, false)
+})
+
+test("a throwing onInitialized callback does not fail a live connection", async () => {
+  const h = createHarness()
+  const initialized = h.shell.initialize({
+    onInitialized() {
+      throw new Error("page bug")
+    },
+  })
+  h.dispatch({
+    jsonrpc: "2.0",
+    id: h.messages.at(-1).id,
+    result: validInitializeResult(),
+  })
+  const hostInfo = await initialized
+  assert.equal(hostInfo.protocolVersion, "2026-01-26")
+  assert.equal(h.shell.getConnectionState(), "initialized")
+  assert.ok(
+    h.errors.some((args) => /onInitialized callback failed/.test(args[0]))
+  )
+  assert.doesNotMatch(h.subtitle.textContent, /Connection failed/)
+
+  h.dispatch({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { still: "delivered" },
+  })
+  assert.equal(h.shell.getToolData().toolResult.still, "delivered")
+  assert.equal(h.shell.isReady(), true)
 })
 
 test("request timeout clears the pending request without closing a healthy connection", async () => {
@@ -467,6 +605,61 @@ test("request timeout clears the pending request without closing a healthy conne
   assert.equal(h.shell.getConnectionState(), "initialized")
 })
 
+test("late replies to timed-out requests are logged instead of dropped", async () => {
+  const h = createHarness()
+  await initialize(h)
+  const pending = h.shell.sendRequest("ui/open-link", { url: "https://x" })
+  const id = h.messages.at(-1).id
+  h.expireTimers()
+  await assert.rejects(pending, /timed out/)
+
+  h.dispatch({ jsonrpc: "2.0", id, result: { isError: false } })
+  const late = h.shell.getMessageLog().at(-1)
+  assert.equal(late.direction, "received")
+  assert.equal(late.method, "ui/open-link (late response)")
+  assert.deepEqual(late.content, { isError: false })
+  assert.equal(h.errors.length, 0)
+
+  h.dispatch({ jsonrpc: "2.0", id: 999, error: { code: -1, message: "?" } })
+  assert.equal(
+    h.shell.getMessageLog().at(-1).method,
+    "unmatched error (id 999)"
+  )
+})
+
+test("timeouts are per request and can be disabled for user-gated calls", async () => {
+  const h = createHarness()
+  await initialize(h)
+  assert.equal(h.timers.size, 0)
+  const noTimeout = h.shell.sendRequest("ui/open-link", {}, { timeoutMs: 0 })
+  assert.equal(h.timers.size, 0)
+  const withTimeout = h.shell.sendRequest("ping", {}, { timeoutMs: 500 })
+  assert.equal(h.timers.size, 1)
+  const pingId = h.messages.at(-1).id
+  h.expireTimers()
+  await assert.rejects(withTimeout, /ping request timed out/)
+  h.dispatch({ jsonrpc: "2.0", id: pingId - 1, result: {} })
+  assert.deepEqual(await noTimeout, {})
+})
+
+test("host requests and the app's replies appear in the message log", async () => {
+  const h = createHarness()
+  await initialize(h)
+  h.dispatch({ jsonrpc: "2.0", id: 7, method: "example/unsupported" })
+  h.dispatch({ jsonrpc: "2.0", id: 8, method: "ui/resource-teardown" })
+  const methods = Array.from(
+    h.shell.getMessageLog(),
+    (m) => m.direction + " " + m.method
+  )
+  assert.deepEqual(methods.slice(-4), [
+    "received example/unsupported (request)",
+    "sent example/unsupported (error)",
+    "received ui/resource-teardown (request)",
+    "sent ui/resource-teardown (response)",
+  ])
+  assert.equal(h.shell.getConnectionState(), "closed")
+})
+
 test("Transparency has a visible status target for initialization failures", async () => {
   const html = readFileSync(
     new URL("../src/static/transparency.html", import.meta.url),
@@ -478,9 +671,8 @@ test("Transparency has a visible status target for initialization failures", asy
   )
   const h = createHarness()
   const pending = h.shell.initialize()
-  const rejected = assert.rejects(pending, /timed out/)
   h.expireTimers()
-  await rejected
+  assert.equal(await pending, null)
   assert.match(
     h.subtitle.textContent,
     /Connection failed: ui\/initialize request timed out/

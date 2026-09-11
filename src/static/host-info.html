@@ -226,6 +226,7 @@
 
           const groups = groupTestsByProperty(testCases, testResults);
           const hostInfo = MCPAppShell.getHostInfo();
+          const compatibility = MCPAppShell.getCompatibility();
           const hostData = { hostContext: hostInfo && hostInfo.hostContext };
           const summary = summarizeResults(hostData);
           
@@ -241,9 +242,9 @@
             html += '<div class="test-grade-circle is-' + summary.grade.color + '">' + summary.grade.letter + '</div>';
             html += '<div class="test-grade-info">';
             html += '<div class="test-grade-title">' +
-              (hostInfo.protocolVersion === MCPAppShell.SPEC_VERSION
-                ? 'HostContext Conformance'
-                : 'HostContext Reference Comparison') + '</div>';
+              (compatibility && !compatibility.matchesBenchVersion
+                ? 'HostContext Reference Comparison'
+                : 'HostContext Conformance') + '</div>';
             html += '<div class="test-grade-subtitle">';
             if (summary.requiredTotal > 0) {
               html += '<span class="test-grade-percentage">' + summary.requiredPercentage + '%</span> of required properties valid';
