@@ -301,9 +301,9 @@
                       </dd>
                     </div>
                   </dl>
-                  <p class="media-type-description">
-                    Video: © <a href="https://www.sintel.org/" target="_blank" rel="noreferrer">Blender Foundation</a>,
-                    licensed under <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noreferrer">CC BY 3.0</a>.
+                  <p id="video-credit" class="media-type-description" hidden>
+                    Video: © <a class="media-source-link" href="https://www.sintel.org/" target="_blank" rel="noreferrer">Blender Foundation</a>,
+                    licensed under <a class="media-source-link" href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noreferrer">CC BY 3.0</a>.
                   </p>
                 </div>
               </div>
@@ -369,6 +369,7 @@
           sourceUrl.textContent = "Open source media"
           sourceUrl.title = media.url
           sourceUrl.href = media.url
+          document.getElementById("video-credit").hidden = selectedType !== "video"
 
           if (selectedType === "video") {
             viewport.innerHTML =
