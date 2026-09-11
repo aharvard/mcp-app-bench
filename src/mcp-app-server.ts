@@ -1,14 +1,13 @@
 /**
- * MCP Server implementation using SEP-1865 (MCP Apps) specification.
+ * MCP Server implementation using the MCP Apps specification.
  *
  * This server uses native MCP SDK patterns without the @mcp-ui/server adapter.
  * It's designed for clients that support the MCP Apps extension (io.modelcontextprotocol/ui).
  *
  * Route: /mcp
  */
-
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
-import { z } from "zod"
+import { McpServer } from "@modelcontextprotocol/server"
+import * as z from "zod/v4"
 import {
   APP_ICON,
   BASE_URL,
@@ -31,7 +30,7 @@ import {
 import { loadAppHtml } from "./utils/load-app-html.js"
 
 export function initMcpAppServer(): McpServer {
-  console.log(`\n🚀 Initializing MCP server (SEP-1865 mode)`)
+  console.log(`\n🚀 Initializing MCP server (MCP Apps mode)`)
   console.log(`   Extension ID: ${MCP_APPS_EXTENSION_ID}`)
   console.log(`   MIME Type: ${MCP_APPS_MIME_TYPE}`)
 
@@ -68,18 +67,18 @@ export function initMcpAppServer(): McpServer {
     .optional()
 
   function withFooterInputSchema<T extends z.ZodRawShape>(shape: T) {
-    return {
+    return z.object({
       ...shape,
       joke: footerJokeInput,
-    }
+    })
   }
 
   function withFooterOutputSchema<T extends z.ZodRawShape>(shape: T) {
-    return {
+    return z.object({
       ...shape,
       timestamp: z.string().describe("The timestamp of the inspection"),
       joke: footerJokeOutput,
-    }
+    })
   }
 
   function buildFooterStructuredContent(
@@ -806,11 +805,11 @@ export function initMcpAppServer(): McpServer {
       title: "Visibility Test: Model + App",
       description:
         "Test tool with visibility ['model', 'app']. The model SHOULD be able to see and call this tool.",
-      inputSchema: {},
-      outputSchema: {
+      inputSchema: z.object({}),
+      outputSchema: z.object({
         visibility: z.array(z.string()),
         timestamp: z.string(),
-      },
+      }),
       _meta: {
         ui: {
           visibility: ["model", "app"],
@@ -838,11 +837,11 @@ export function initMcpAppServer(): McpServer {
       title: "Visibility Test: App Only",
       description:
         "Test tool with visibility ['app']. The model should NOT see this tool. Only the app UI can call it.",
-      inputSchema: {},
-      outputSchema: {
+      inputSchema: z.object({}),
+      outputSchema: z.object({
         visibility: z.array(z.string()),
         timestamp: z.string(),
-      },
+      }),
       _meta: {
         ui: {
           visibility: ["app"],
@@ -870,11 +869,11 @@ export function initMcpAppServer(): McpServer {
       title: "Visibility Test: Model Only",
       description:
         "Test tool with visibility ['model']. The model SHOULD see this. The app UI should NOT be able to call it.",
-      inputSchema: {},
-      outputSchema: {
+      inputSchema: z.object({}),
+      outputSchema: z.object({
         visibility: z.array(z.string()),
         timestamp: z.string(),
-      },
+      }),
       _meta: {
         ui: {
           visibility: ["model"],
@@ -902,11 +901,11 @@ export function initMcpAppServer(): McpServer {
       title: "Visibility Test: Default (no visibility field)",
       description:
         "Test tool with no visibility field. Per spec, defaults to ['model', 'app']. The model SHOULD see this.",
-      inputSchema: {},
-      outputSchema: {
+      inputSchema: z.object({}),
+      outputSchema: z.object({
         visibility: z.string(),
         timestamp: z.string(),
-      },
+      }),
     },
     async () => ({
       content: [
@@ -1069,12 +1068,12 @@ export function initMcpAppServer(): McpServer {
     {
       title: "Get Server Time",
       description: "Returns the current server time",
-      inputSchema: {},
-      outputSchema: {
+      inputSchema: z.object({}),
+      outputSchema: z.object({
         timestamp: z.string().describe("ISO 8601 formatted server timestamp"),
         timezone: z.string().describe("Server timezone"),
         unixMs: z.number().describe("Unix timestamp in milliseconds"),
-      },
+      }),
     },
     async () => {
       const now = new Date()

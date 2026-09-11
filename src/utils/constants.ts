@@ -2,7 +2,10 @@ import { randomBytes } from "crypto"
 
 export const PORT = process.env.PORT || 6789
 export const BASE_URL =
-  process.env.BASE_URL || (`http://localhost:${PORT}` as const)
+  process.env.BASE_URL ||
+  (process.env.RENDER_EXTERNAL_HOSTNAME
+    ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}`
+    : (`http://localhost:${PORT}` as const))
 
 // Cache-busting hash generated on server start
 export const CACHE_HASH = randomBytes(8).toString("hex")
