@@ -12,6 +12,7 @@
 
   let requestId = 1
   const pendingRequests = new Map()
+  const DEFAULT_REQUEST_TIMEOUT_MS = 10000
   let currentHostInfo = null
   let currentToolData = {
     toolInput: null,
@@ -20,6 +21,8 @@
     toolCancelled: null,
   }
   let isReady = false
+  let connectionState = "closed"
+  let resizeObserver = null
   let lastReportedHeight = null
   let pendingReportedHeight = null
   let sizeChangeFrame = null
@@ -306,6 +309,8 @@
   // ==========================================================================
 
   function sendSizeChanged() {
+    if (connectionState !== "initialized") return
+
     const measuredHeight = getMeasuredContentHeight()
 
     pendingReportedHeight = measuredHeight
@@ -365,7 +370,18 @@
   function sendRequest(method, params) {
     return new Promise((resolve, reject) => {
       const id = requestId++
-      pendingRequests.set(id, { resolve, reject, method, params })
+      const timeoutId = window.setTimeout(function () {
+        if (!pendingRequests.has(id)) return
+        pendingRequests.delete(id)
+        reject(new Error(method + " request timed out"))
+      }, DEFAULT_REQUEST_TIMEOUT_MS)
+      pendingRequests.set(id, {
+        resolve,
+        reject,
+        method,
+        params,
+        timeoutId,
+      })
       logMessage("sent", method + " (request)", params)
       window.parent.postMessage(
         {
@@ -1069,21 +1085,181 @@
   // Message Handling
   // ==========================================================================
 
+  function isObject(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+  }
+
+  function classifyJsonRpcMessage(data) {
+    if (!isObject(data) || data.jsonrpc !== "2.0") return null
+
+    const hasId = Object.prototype.hasOwnProperty.call(data, "id")
+    const hasMethod = Object.prototype.hasOwnProperty.call(data, "method")
+    const hasResult = Object.prototype.hasOwnProperty.call(data, "result")
+    const hasError = Object.prototype.hasOwnProperty.call(data, "error")
+
+    if (hasMethod) {
+      if (typeof data.method !== "string" || hasResult || hasError) {
+        return "invalid"
+      }
+      return hasId ? "request" : "notification"
+    }
+
+    if (
+      hasId &&
+      hasResult !== hasError &&
+      (!hasError || isObject(data.error))
+    ) {
+      return hasError ? "error-response" : "success-response"
+    }
+
+    return "invalid"
+  }
+
+  function sendResponse(id, result) {
+    window.parent.postMessage({ jsonrpc: "2.0", id: id, result: result }, "*")
+  }
+
+  function sendErrorResponse(id, code, message) {
+    window.parent.postMessage(
+      {
+        jsonrpc: "2.0",
+        id: id,
+        error: { code: code, message: message },
+      },
+      "*"
+    )
+  }
+
+  function setConnectionState(nextState, error) {
+    connectionState = nextState
+    window.dispatchEvent(
+      new CustomEvent("mcp-connection-state-changed", {
+        detail: { state: nextState, error: error || null },
+      })
+    )
+  }
+
+  function failPendingRequests(reason) {
+    const error = reason instanceof Error ? reason : new Error(String(reason))
+    pendingRequests.forEach(function (pending) {
+      window.clearTimeout(pending.timeoutId)
+      pending.reject(error)
+    })
+    pendingRequests.clear()
+  }
+
+  function stopAutomaticSizing() {
+    if (resizeObserver) {
+      resizeObserver.disconnect()
+      resizeObserver = null
+    }
+    if (sizeChangeFrame !== null) {
+      window.cancelAnimationFrame(sizeChangeFrame)
+      sizeChangeFrame = null
+    }
+    pendingReportedHeight = null
+  }
+
+  function startAutomaticSizing() {
+    if (resizeObserver) return
+
+    resizeObserver = new ResizeObserver(sendSizeChanged)
+    resizeObserver.observe(document.body)
+    const appContent = document.getElementById("app-content")
+    if (appContent) resizeObserver.observe(appContent)
+    const appLoading = document.getElementById("app-loading")
+    if (appLoading) resizeObserver.observe(appLoading)
+    sendSizeChanged()
+  }
+
+  function closeConnection(reason) {
+    stopAutomaticSizing()
+    failPendingRequests(reason || new Error("MCP connection closed"))
+    setConnectionState("closed")
+  }
+
+  function validateInitializeResult(result) {
+    if (!isObject(result)) {
+      throw new Error("Host returned an invalid initialization result")
+    }
+
+    let compatibilityMode = null
+    if (!result.hostInfo && isObject(result.appInfo)) {
+      result.hostInfo = result.appInfo
+      compatibilityMode = "legacy-app-info"
+    }
+    if (!result.hostCapabilities && isObject(result.appCapabilities)) {
+      result.hostCapabilities = result.appCapabilities
+      compatibilityMode = "legacy-app-info"
+    }
+
+    if (result.protocolVersion !== MCP_APPS_SPEC_VERSION) {
+      throw new Error(
+        "Unsupported MCP Apps protocol version: " +
+          (typeof result.protocolVersion === "string"
+            ? result.protocolVersion
+            : "missing")
+      )
+    }
+    if (
+      !isObject(result.hostInfo) ||
+      typeof result.hostInfo.name !== "string" ||
+      typeof result.hostInfo.version !== "string"
+    ) {
+      throw new Error("Initialization result is missing valid hostInfo")
+    }
+    if (!isObject(result.hostCapabilities)) {
+      throw new Error("Initialization result is missing hostCapabilities")
+    }
+    if (!isObject(result.hostContext)) {
+      throw new Error("Initialization result is missing hostContext")
+    }
+
+    return compatibilityMode
+  }
+
+  function showConnectionError(error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const subtitle = document.getElementById("host-info-subtitle")
+    if (subtitle) subtitle.textContent = "Connection failed: " + message
+    const loadingText = document.querySelector(".app-loading-text")
+    if (loadingText) loadingText.textContent = "Connection failed: " + message
+  }
+
   function handleMessage(event) {
+    if (event.source !== window.parent) return
+
     const data = event.data
-    if (!data || typeof data !== "object" || data.jsonrpc !== "2.0") return
+    const messageType = classifyJsonRpcMessage(data)
+    if (messageType === null) return
+    if (messageType === "invalid") {
+      console.error("[MCP Shell] Ignoring invalid JSON-RPC message", data)
+      return
+    }
 
     // Handle response to our request
-    if ("id" in data && pendingRequests.has(data.id)) {
+    if (
+      (messageType === "success-response" ||
+        messageType === "error-response") &&
+      pendingRequests.has(data.id)
+    ) {
       const pending = pendingRequests.get(data.id)
       pendingRequests.delete(data.id)
-      if (data.error) {
+      window.clearTimeout(pending.timeoutId)
+      if (messageType === "error-response") {
         logMessage("received", pending.method + " (error)", data.error)
         pending.reject(data.error)
       } else {
         logMessage("received", pending.method + " (response)", data.result)
         pending.resolve(data.result)
       }
+      return
+    }
+
+    if (
+      messageType === "success-response" ||
+      messageType === "error-response"
+    ) {
       return
     }
 
@@ -1140,17 +1316,12 @@
       )
     }
 
-    // Handle resource-teardown request
-    if (data.method === "ui/resource-teardown") {
-      if ("id" in data) {
-        window.parent.postMessage(
-          {
-            jsonrpc: "2.0",
-            id: data.id,
-            result: {},
-          },
-          "*"
-        )
+    if (messageType === "request") {
+      if (data.method === "ui/resource-teardown") {
+        sendResponse(data.id, {})
+        closeConnection(new Error("Host requested resource teardown"))
+      } else {
+        sendErrorResponse(data.id, -32601, "Method not found: " + data.method)
       }
     }
   }
@@ -1164,6 +1335,11 @@
     const clientName = options.clientName || "MCP App"
     const clientVersion = options.clientVersion || "1.0.0"
     const onInitialized = options.onInitialized || function () {}
+
+    if (connectionState === "connecting" || connectionState === "initialized") {
+      throw new Error("MCP connection is already " + connectionState)
+    }
+    setConnectionState("connecting")
 
     try {
       const availableDisplayModes =
@@ -1192,14 +1368,7 @@
       }
 
       const result = await sendRequest("ui/initialize", initParams)
-
-      // MCP Jam compatibility
-      if (result.appInfo && !result.hostInfo) {
-        result.hostInfo = result.appInfo
-      }
-      if (result.appCapabilities && !result.hostCapabilities) {
-        result.hostCapabilities = result.appCapabilities
-      }
+      const compatibilityMode = validateInitializeResult(result)
 
       // Apply initial theme and display mode
       if (result.hostContext && result.hostContext.theme) {
@@ -1214,7 +1383,8 @@
         protocolVersion: result.protocolVersion,
         hostInfo: result.hostInfo,
         hostCapabilities: result.hostCapabilities,
-        hostContext: result.hostContext || {},
+        hostContext: result.hostContext,
+        compatibilityMode: compatibilityMode,
       }
 
       // Update subtitle if present
@@ -1228,6 +1398,8 @@
 
       // Send initialized notification
       sendNotification("ui/notifications/initialized")
+      setConnectionState("initialized")
+      startAutomaticSizing()
 
       // Call the callback
       onInitialized(result)
@@ -1238,10 +1410,11 @@
       )
     } catch (error) {
       console.error("[MCP Shell] Initialization error:", error)
-      const subtitle = document.getElementById("host-info-subtitle")
-      if (subtitle) {
-        subtitle.textContent = "Error: " + error.message
-      }
+      stopAutomaticSizing()
+      failPendingRequests(error)
+      setConnectionState("failed", error)
+      showConnectionError(error)
+      throw error
     }
   }
 
@@ -1250,21 +1423,6 @@
   // ==========================================================================
 
   window.addEventListener("message", handleMessage)
-
-  // Send initial size
-  sendSizeChanged()
-
-  // Observe size changes
-  const resizeObserver = new ResizeObserver(sendSizeChanged)
-  resizeObserver.observe(document.body)
-  const appContent = document.getElementById("app-content")
-  if (appContent) {
-    resizeObserver.observe(appContent)
-  }
-  const appLoading = document.getElementById("app-loading")
-  if (appLoading) {
-    resizeObserver.observe(appLoading)
-  }
 
   // ==========================================================================
   // Inspector Navigation
@@ -1436,6 +1594,9 @@
       return messageLog.slice()
     },
     isReady: checkReady,
+    getConnectionState: function () {
+      return connectionState
+    },
 
     // Loading state
     setReady: setReady,

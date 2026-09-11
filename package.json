@@ -10,6 +10,7 @@
     "test": "node --import tsx --test test/*.test.ts",
     "copy:static": "rsync -a src/static/ dist/static/",
     "start": "node dist/index.js",
+    "test": "node --test tests/*.test.mjs",
     "dev:server": "vite-node src/index.ts",
     "serve:apps": "serve -s ./assets -p 4444 --cors",
     "inspect:dev": "pnpx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server local-server",
