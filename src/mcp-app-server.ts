@@ -1012,7 +1012,7 @@ export function initMcpAppServer(): McpServer {
                   BASE_URL,
                   "https://fonts.googleapis.com",
                   "https://fonts.gstatic.com",
-                  "https://download.blender.org",
+                  "https://interactive-examples.mdn.mozilla.net",
                   "https://dn721902.ca.archive.org",
                 ],
               },
