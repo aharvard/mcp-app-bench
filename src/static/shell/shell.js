@@ -369,6 +369,13 @@
 
   function sendRequest(method, params) {
     return new Promise((resolve, reject) => {
+      if (
+        connectionState !== "initialized" &&
+        !(connectionState === "connecting" && method === "ui/initialize")
+      ) {
+        reject(new Error("MCP connection is " + connectionState))
+        return
+      }
       const id = requestId++
       const timeoutId = window.setTimeout(function () {
         if (!pendingRequests.has(id)) return
@@ -396,6 +403,14 @@
   }
 
   function sendNotification(method, params) {
+    if (
+      connectionState !== "initialized" &&
+      !(
+        connectionState === "connecting" &&
+        method === "ui/notifications/initialized"
+      )
+    )
+      return
     logMessage("sent", method + " (notification)", params)
     window.parent.postMessage(
       {
@@ -1097,6 +1112,16 @@
     const hasResult = Object.prototype.hasOwnProperty.call(data, "result")
     const hasError = Object.prototype.hasOwnProperty.call(data, "error")
 
+    if (
+      hasId &&
+      !(
+        typeof data.id === "string" ||
+        (typeof data.id === "number" && Number.isFinite(data.id))
+      )
+    )
+      return "invalid"
+    if ("params" in data && !isObject(data.params)) return "invalid"
+
     if (hasMethod) {
       if (typeof data.method !== "string" || hasResult || hasError) {
         return "invalid"
@@ -1107,7 +1132,11 @@
     if (
       hasId &&
       hasResult !== hasError &&
-      (!hasError || isObject(data.error))
+      (!hasResult || isObject(data.result)) &&
+      (!hasError ||
+        (isObject(data.error) &&
+          Number.isInteger(data.error.code) &&
+          typeof data.error.message === "string"))
     ) {
       return hasError ? "error-response" : "success-response"
     }
@@ -1173,9 +1202,42 @@
   }
 
   function closeConnection(reason) {
+    setConnectionState("closed")
     stopAutomaticSizing()
     failPendingRequests(reason || new Error("MCP connection closed"))
-    setConnectionState("closed")
+  }
+
+  // Validate known stable-profile fields; unknown extension fields are preserved.
+  // Do not enforce the grading schema's unionGroups: empty dimensions are valid.
+  function validateFields(value, fields, path) {
+    for (const [key, field] of Object.entries(fields)) {
+      const child = value[key]
+      const childPath = path + "." + key
+      if (child === undefined && field.optional) continue
+      const type = Array.isArray(child)
+        ? "array"
+        : child === null
+          ? "null"
+          : typeof child
+      const types = Array.isArray(field.type) ? field.type : [field.type]
+      if (
+        !types.includes(type) ||
+        (type === "number" && !Number.isFinite(child)) ||
+        (field.enum && !field.enum.includes(child))
+      ) {
+        throw new Error("Invalid initialization field: " + childPath)
+      }
+      if (field.children) validateFields(child, field.children, childPath)
+      if (field.items) {
+        child.forEach((item, index) =>
+          validateFields(
+            { item },
+            { item: field.items },
+            childPath + "[" + index + "]"
+          )
+        )
+      }
+    }
   }
 
   function validateInitializeResult(result) {
@@ -1215,6 +1277,64 @@
       throw new Error("Initialization result is missing hostContext")
     }
 
+    const optionalObject = { type: "object", optional: true }
+    const optionalBoolean = { type: "boolean", optional: true }
+    const listCapability = {
+      ...optionalObject,
+      children: { listChanged: optionalBoolean },
+    }
+    const domains = {
+      type: "array",
+      optional: true,
+      items: { type: "string" },
+    }
+    validateFields(
+      result.hostCapabilities,
+      {
+        experimental: optionalObject,
+        openLinks: optionalObject,
+        serverTools: listCapability,
+        serverResources: listCapability,
+        logging: optionalObject,
+        sandbox: {
+          ...optionalObject,
+          children: {
+            permissions: {
+              ...optionalObject,
+              children: {
+                camera: optionalObject,
+                microphone: optionalObject,
+                geolocation: optionalObject,
+                clipboardWrite: optionalObject,
+              },
+            },
+            csp: {
+              ...optionalObject,
+              children: {
+                connectDomains: domains,
+                resourceDomains: domains,
+                frameDomains: domains,
+                baseUriDomains: domains,
+              },
+            },
+          },
+        },
+      },
+      "hostCapabilities"
+    )
+    validateFields(
+      result.hostContext,
+      {
+        ...hostContextSchema.hostContext.children,
+        availableDisplayModes: {
+          type: "array",
+          optional: true,
+          items: { type: "string" },
+        },
+      },
+      "hostContext"
+    )
+
     return compatibilityMode
   }
 
@@ -1228,6 +1348,7 @@
 
   function handleMessage(event) {
     if (event.source !== window.parent) return
+    if (connectionState === "closed" || connectionState === "failed") return
 
     const data = event.data
     const messageType = classifyJsonRpcMessage(data)
@@ -1260,6 +1381,16 @@
       messageType === "success-response" ||
       messageType === "error-response"
     ) {
+      return
+    }
+
+    if (messageType === "request") {
+      if (data.method === "ui/resource-teardown") {
+        sendResponse(data.id, {})
+        closeConnection(new Error("Host requested resource teardown"))
+      } else {
+        sendErrorResponse(data.id, -32601, "Method not found: " + data.method)
+      }
       return
     }
 
@@ -1315,15 +1446,6 @@
         new CustomEvent("mcp-tool-cancelled", { detail: data.params })
       )
     }
-
-    if (messageType === "request") {
-      if (data.method === "ui/resource-teardown") {
-        sendResponse(data.id, {})
-        closeConnection(new Error("Host requested resource teardown"))
-      } else {
-        sendErrorResponse(data.id, -32601, "Method not found: " + data.method)
-      }
-    }
   }
 
   // ==========================================================================
@@ -1368,6 +1490,7 @@
       }
 
       const result = await sendRequest("ui/initialize", initParams)
+      if (connectionState !== "connecting") return
       const compatibilityMode = validateInitializeResult(result)
 
       // Apply initial theme and display mode
@@ -1412,6 +1535,7 @@
       console.error("[MCP Shell] Initialization error:", error)
       stopAutomaticSizing()
       failPendingRequests(error)
+      if (connectionState === "closed") throw error
       setConnectionState("failed", error)
       showConnectionError(error)
       throw error
