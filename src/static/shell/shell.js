@@ -1255,12 +1255,12 @@
       compatibilityMode = "legacy-app-info"
     }
 
-    if (result.protocolVersion !== MCP_APPS_SPEC_VERSION) {
+    if (
+      typeof result.protocolVersion !== "string" ||
+      !result.protocolVersion.trim()
+    ) {
       throw new Error(
-        "Unsupported MCP Apps protocol version: " +
-          (typeof result.protocolVersion === "string"
-            ? result.protocolVersion
-            : "missing")
+        "Initialization result is missing a valid protocolVersion"
       )
     }
     if (
@@ -1516,7 +1516,16 @@
         const name = result.hostInfo.name || "Unknown Host"
         const version = result.hostInfo.version || ""
         const hostDisplay = version ? name + " v" + version : name
-        subtitle.textContent = "Current host: " + hostDisplay
+        subtitle.textContent =
+          "Current host: " +
+          hostDisplay +
+          " · MCP Apps protocol: " +
+          result.protocolVersion +
+          " · Bench reference: " +
+          MCP_APPS_SPEC_VERSION +
+          (result.protocolVersion !== MCP_APPS_SPEC_VERSION
+            ? " (different versions; results are a reference comparison)"
+            : "")
       }
 
       // Send initialized notification

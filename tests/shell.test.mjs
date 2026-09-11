@@ -259,10 +259,10 @@ test("malformed initialization fails visibly and sends no initialized notificati
   harness.dispatch({
     jsonrpc: "2.0",
     id: request.id,
-    result: { protocolVersion: "bogus" },
+    result: { protocolVersion: 42 },
   })
 
-  await assert.rejects(initialized, /Unsupported MCP Apps protocol version/)
+  await assert.rejects(initialized, /valid protocolVersion/)
   assert.equal(harness.shell.getConnectionState(), "failed")
   assert.match(harness.loadingText.textContent, /Connection failed/)
   assert.equal(
@@ -297,6 +297,33 @@ test("automatic sizing starts only after successful initialization", async () =>
     ),
     true
   )
+})
+
+test("different protocol versions are displayed without blocking initialization", async () => {
+  for (const protocolVersion of [
+    "2025-11-21",
+    "2027-01-01",
+    "vendor-preview",
+  ]) {
+    const h = createHarness()
+    await initialize(h, validInitializeResult({ protocolVersion }))
+    assert.equal(h.shell.getConnectionState(), "initialized")
+    assert.equal(h.shell.getHostInfo().protocolVersion, protocolVersion)
+    assert.ok(
+      h.subtitle.textContent.includes("MCP Apps protocol: " + protocolVersion)
+    )
+    assert.ok(h.subtitle.textContent.includes("Bench reference: 2026-01-26"))
+    assert.match(h.subtitle.textContent, /reference comparison/)
+    assert.ok(
+      h.messages.some((m) => m.method === "ui/notifications/initialized")
+    )
+    h.dispatch({
+      jsonrpc: "2.0",
+      method: "ui/notifications/tool-result",
+      params: {},
+    })
+    assert.equal(h.shell.isReady(), true)
+  }
 })
 
 test("unrelated browser messages are ignored", () => {
