@@ -301,6 +301,10 @@
                       </dd>
                     </div>
                   </dl>
+                  <p class="media-type-description">
+                    Video: © <a href="https://www.sintel.org/" target="_blank" rel="noreferrer">Blender Foundation</a>,
+                    licensed under <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noreferrer">CC BY 3.0</a>.
+                  </p>
                 </div>
               </div>
             </div>
@@ -317,9 +321,9 @@
           video: {
             label: "Video",
             icon: "🎬",
-            sourceLabel: "Sintel trailer (Blender Foundation)",
+            sourceLabel: "Sintel trailer © Blender Foundation · CC BY 3.0",
             format: "video/mp4",
-            url: "https://media.w3.org/2010/05/sintel/trailer.mp4",
+            url: "{{BASE_URL}}/static/media/sintel-trailer.mp4",
             description:
               "A short animated trailer with stereo sound rendered in a standard HTML5 video element.",
           },
@@ -368,7 +372,7 @@
 
           if (selectedType === "video") {
             viewport.innerHTML =
-              '<video class="media-element" controls playsinline preload="metadata">' +
+              '<video class="media-element" controls playsinline crossorigin="anonymous" preload="metadata">' +
               '<source src="' +
               media.url +
               '" type="' +

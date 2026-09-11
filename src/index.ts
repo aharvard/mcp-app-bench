@@ -37,6 +37,16 @@ app.use("/assets", express.static(assetsDir, { maxAge: "1h" }))
 
 // Serve built static app files so shared assets like icon.svg have a stable URL
 const staticDir = path.join(__dirname, "static")
+// Public media fixtures may be embedded by hosts using cross-origin isolation.
+app.use(
+  "/static/media",
+  express.static(path.join(staticDir, "media"), {
+    maxAge: "1h",
+    setHeaders: (res) => {
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin")
+    },
+  })
+)
 app.use("/static", express.static(staticDir, { maxAge: "1h" }))
 
 // Serve shell assets (CSS, JS) from the static/shell directory

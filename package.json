@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc && pnpm copy:static",
-    "copy:static": "cp -r src/static dist/static",
+    "copy:static": "mkdir -p dist/static && cp -R src/static/. dist/static/",
     "start": "node dist/index.js",
     "dev:server": "vite-node src/index.ts",
     "serve:apps": "serve -s ./assets -p 4444 --cors",
