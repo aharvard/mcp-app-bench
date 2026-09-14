@@ -128,6 +128,8 @@
           ALL_MODES.forEach(function (mode) {
             var btn = document.getElementById('btn-mode-' + mode);
             if (!btn) return;
+            btn.disabled = !Array.isArray(hostAvailableModes) || !hostAvailableModes.includes(mode) ||
+              (Array.isArray(appDeclaredModes) && !appDeclaredModes.includes(mode));
 
             // Mark the active mode
             if (mode === currentMode) {
@@ -209,12 +211,20 @@
         // ====================================================================
 
         function requestDisplayMode(mode) {
+          if (!Array.isArray(hostAvailableModes) || !hostAvailableModes.includes(mode) ||
+              (Array.isArray(appDeclaredModes) && !appDeclaredModes.includes(mode))) {
+            addLogEntry('error', mode, 'Normal request blocked: mode is not advertised and declared');
+            return;
+          }
           addLogEntry('request', mode, 'Requesting mode: ' + mode);
 
           MCPAppShell.sendRequest('ui/request-display-mode', {
             mode: mode
           }).then(function (result) {
             var actualMode = result && result.mode ? result.mode : null;
+            if (actualMode && (!ALL_MODES.includes(actualMode) || !Array.isArray(hostAvailableModes) || !hostAvailableModes.includes(actualMode) || (Array.isArray(appDeclaredModes) && !appDeclaredModes.includes(actualMode)))) {
+              addLogEntry('error', String(actualMode), 'Host returned a mode outside the advertised intersection');
+            }
             if (actualMode) {
               currentMode = actualMode;
               if (actualMode === mode) {
@@ -263,6 +273,9 @@
         window.addEventListener('mcp-host-context-changed', function (e) {
           var params = e.detail;
           if (params && params.displayMode) {
+            if ((Array.isArray(appDeclaredModes) && !appDeclaredModes.includes(params.displayMode)) || (Array.isArray(hostAvailableModes) && !hostAvailableModes.includes(params.displayMode))) {
+              addLogEntry('error', params.displayMode, 'Host notified a mode outside the advertised intersection');
+            }
             var oldMode = currentMode;
             currentMode = params.displayMode;
             if (oldMode !== currentMode) {
@@ -276,6 +289,22 @@
           }
         });
 
+        var negative = document.createElement('button');
+        negative.className = 'action-btn';
+        negative.textContent = 'Negative probe: request unsupported mode';
+        negative.onclick = async function () {
+          var mode = ALL_MODES.find(function (m) { return !Array.isArray(hostAvailableModes) || !hostAvailableModes.includes(m) || (Array.isArray(appDeclaredModes) && !appDeclaredModes.includes(m)); });
+          if (!mode) { addLogEntry('info', '', 'No unsupported mode in this fixture'); return; }
+          try {
+            var result = await MCPAppShell.sendRequest('ui/request-display-mode', {mode: mode});
+            if (!result || !ALL_MODES.includes(result.mode) || !Array.isArray(hostAvailableModes) || !hostAvailableModes.includes(result.mode) || (Array.isArray(appDeclaredModes) && !appDeclaredModes.includes(result.mode))) {
+              addLogEntry('error', mode, 'Negative probe returned a missing or unsupported mode: ' + JSON.stringify(result));
+              return;
+            }
+            addLogEntry('response', mode, JSON.stringify(result) + ' — returned mode must stay in supported intersection; declining is valid');
+          } catch (error) { addLogEntry('response', mode, 'Rejected negative probe: ' + error.message); }
+        };
+        document.getElementById('app-content').appendChild(negative);
         // Button click handlers
         ALL_MODES.forEach(function (mode) {
           var btn = document.getElementById('btn-mode-' + mode);

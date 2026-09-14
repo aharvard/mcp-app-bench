@@ -2,11 +2,27 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 import vm from "node:vm"
+import Ajv2020 from "ajv/dist/2020.js"
+import addFormats from "ajv-formats"
+import { wireFixtures } from "../test/wire-fixtures.ts"
 
 const shellSource = readFileSync(
   new URL("../src/static/shell/shell.js", import.meta.url),
   "utf8"
 )
+
+const upstreamSchema = JSON.parse(
+  readFileSync(
+    new URL("../test/fixtures/ext-apps-schema.json", import.meta.url),
+    "utf8"
+  )
+)
+const ajv = new Ajv2020({ strict: false, allErrors: true })
+addFormats(ajv)
+function validateWire(name, value) {
+  const validate = ajv.compile(upstreamSchema.$defs[name])
+  assert.ok(validate(value), JSON.stringify(validate.errors))
+}
 
 class FakeElement {
   constructor() {
@@ -112,6 +128,18 @@ function createHarness() {
     CustomEvent: FakeCustomEvent,
     document: {
       body,
+      head: {
+        appendChild(element) {
+          elements[element.id] = element
+        },
+      },
+      createElement() {
+        const element = new FakeElement()
+        element.remove = () => {
+          delete elements[element.id]
+        }
+        return element
+      },
       documentElement: new FakeElement(),
       getElementById(id) {
         return elements[id] || null
@@ -138,6 +166,8 @@ function createHarness() {
       }
     },
     errors,
+    document: context.document,
+    elements,
     timers,
     expireTimers() {
       for (const [id, callback] of [...timers]) {
@@ -429,7 +459,7 @@ test("requests named like notifications have no notification side effects", asyn
     params: { unexpected: true },
   })
   assert.equal(h.shell.getToolData().toolResult, null)
-  assert.equal(h.shell.isReady(), false)
+  assert.equal(h.shell.isReady(), true)
   assert.equal(h.messages.at(-1).error.code, -32601)
   h.dispatch({
     jsonrpc: "2.0",
@@ -677,4 +707,180 @@ test("Transparency has a visible status target for initialization failures", asy
     h.subtitle.textContent,
     /Connection failed: ui\/initialize request timed out/
   )
+})
+
+test("emitted initialize, content arrays and height-only size match pinned upstream wire schemas", async () => {
+  for (const [name, fixture] of Object.entries(wireFixtures))
+    validateWire(name, fixture)
+  const h = createHarness()
+  await initialize(h)
+  const init = h.messages.find((m) => m.method === "ui/initialize")
+  validateWire("McpUiInitializeRequest", {
+    method: init.method,
+    params: init.params,
+  })
+  assert.equal("clientInfo" in init.params, false)
+  const promise = h.shell.sendRequest("ui/message", {
+    role: "user",
+    content: [{ type: "text", text: "fixture" }],
+  })
+  const message = h.messages.at(-1)
+  validateWire("McpUiMessageRequest", {
+    method: message.method,
+    params: message.params,
+  })
+  h.dispatch({ jsonrpc: "2.0", id: message.id, result: {} })
+  await promise
+  const size = h.messages.find(
+    (m) => m.method === "ui/notifications/size-changed"
+  )
+  assert.ok(size)
+  validateWire("McpUiSizeChangedNotification", {
+    method: size.method,
+    params: size.params,
+  })
+  assert.equal("id" in size, false)
+  const validate = ajv.compile(upstreamSchema.$defs.McpUiMessageRequest)
+  assert.equal(
+    validate({
+      method: "ui/message",
+      params: { role: "user", content: { type: "text", text: "wrong" } },
+    }),
+    false
+  )
+})
+
+test("malformed style records stay inspectable instead of throwing during CSS injection", async () => {
+  const h = createHarness()
+  const variables = { "--font-sans": { toString: 0 } }
+  await initialize(
+    h,
+    validInitializeResult({ hostContext: { styles: { variables } } })
+  )
+  assert.equal(h.shell.getConnectionState(), "initialized")
+  const tests = h.shell.generateTestCases(h.shell.hostContextSchema)
+  const recordTest = tests.find(
+    (t) => t.path === "hostContext.styles.variables"
+  )
+  assert.equal(
+    h.shell.runTestCase(recordTest, h.shell.getHostInfo()).status,
+    "invalid"
+  )
+})
+
+test("complete host containers, enums and array members are validated without primitive traversal crashes", () => {
+  const h = createHarness()
+  const cases = h.shell.generateTestCases(h.shell.hostContextSchema)
+  const check = (context, path) =>
+    h.shell.runTestCase(
+      cases.find((t) => t.path === path),
+      { hostContext: context }
+    ).status
+  for (const value of [false, "bad", [], null])
+    assert.equal(check({ styles: value }, "hostContext.styles"), "invalid")
+  assert.equal(
+    check(
+      { availableDisplayModes: ["inline", 7] },
+      "hostContext.availableDisplayModes"
+    ),
+    "invalid"
+  )
+  assert.equal(check({ theme: "sepia" }, "hostContext.theme"), "invalid")
+  assert.equal(
+    check(
+      { toolInfo: { tool: { name: "x" } } },
+      "hostContext.toolInfo.tool.inputSchema"
+    ),
+    "missing"
+  )
+  assert.equal(
+    check(
+      { toolInfo: { tool: { inputSchema: { type: "array" } } } },
+      "hostContext.toolInfo.tool.inputSchema.type"
+    ),
+    "invalid"
+  )
+  assert.equal(
+    check({ containerDimensions: {} }, "hostContext.containerDimensions"),
+    "provided"
+  )
+  assert.equal(
+    h.shell.getValueByPath(
+      { hostContext: { styles: false } },
+      "hostContext.styles.css.fonts"
+    ).found,
+    false
+  )
+})
+
+test("lifecycle fixtures retain ordered streaming, success, tool error and cancellation evidence", async () => {
+  for (const terminal of [
+    ["tool-result", { content: [{ type: "text", text: "success" }] }],
+    [
+      "tool-result",
+      { content: [{ type: "text", text: "error" }], isError: true },
+    ],
+    ["tool-cancelled", { reason: "fixture cancellation" }],
+  ]) {
+    const h = createHarness()
+    await initialize(h)
+    for (const [method, params] of [
+      ["tool-input-partial", { arguments: { q: "a" } }],
+      ["tool-input", { arguments: { q: "abc" } }],
+      terminal,
+    ])
+      h.dispatch({
+        jsonrpc: "2.0",
+        method: "ui/notifications/" + method,
+        params,
+      })
+    const events = h.shell.getLifecycleEvents()
+    assert.equal(events.length, 3)
+    assert.ok(events.every((e) => e.problems.length === 0))
+    assert.equal(events[2].params, terminal[1])
+    assert.equal(h.shell.isReady(), true)
+  }
+  const h = createHarness()
+  await initialize(h)
+  for (const method of ["tool-result", "tool-input-partial"])
+    h.dispatch({
+      jsonrpc: "2.0",
+      method: "ui/notifications/" + method,
+      params: {},
+    })
+  assert.match(
+    h.shell.getLifecycleEvents()[0].problems[0],
+    /without required complete input/
+  )
+  assert.match(h.shell.getLifecycleEvents()[1].problems[0], /terminal/)
+})
+
+test("draft app tools route independently and are unavailable after teardown", async () => {
+  const h = createHarness()
+  let calls = 0
+  const promise = h.shell.initialize({
+    appCapabilities: { tools: { listChanged: true } },
+    hostRequestHandlers: {
+      "tools/list": () => {
+        calls++
+        return { tools: [] }
+      },
+    },
+  })
+  h.dispatch({
+    jsonrpc: "2.0",
+    id: h.messages.at(-1).id,
+    result: validInitializeResult(),
+  })
+  await promise
+  h.dispatch({ jsonrpc: "2.0", id: 92, method: "tools/list", params: {} })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(calls, 1)
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(h.messages.find((m) => m.id === 92).result)),
+    { tools: [] }
+  )
+  h.dispatch({ jsonrpc: "2.0", id: 93, method: "ui/resource-teardown" })
+  h.dispatch({ jsonrpc: "2.0", id: 94, method: "tools/list" })
+  assert.equal(calls, 1)
 })

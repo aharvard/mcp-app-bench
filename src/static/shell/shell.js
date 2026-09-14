@@ -36,6 +36,61 @@
   let pendingReportedHeight = null
   let sizeChangeFrame = null
 
+  const lifecycleEvents = []
+  let lifecycleSequence = 0
+  let hostRequestHandlers = {}
+  let completeInputReceived = false
+  let toolTerminal = false
+
+  function recordLifecycle(method, params) {
+    const problems = []
+    if (method.endsWith("tool-input-partial") && completeInputReceived)
+      problems.push("Partial input after complete input")
+    if (method.endsWith("tool-result") && !completeInputReceived)
+      problems.push("Result without required complete input")
+    if (method.endsWith("tool-input") && completeInputReceived)
+      problems.push("Duplicate complete input")
+    if (toolTerminal) problems.push("Event after terminal result/cancellation")
+    if (method.endsWith("tool-input")) completeInputReceived = true
+    if (method.endsWith("tool-result") || method.endsWith("tool-cancelled"))
+      toolTerminal = true
+    lifecycleEvents.push({
+      sequence: ++lifecycleSequence,
+      method,
+      params,
+      problems,
+    })
+    if (lifecycleEvents.length > 200) lifecycleEvents.shift()
+  }
+
+  function applyHostLayout(context) {
+    const dims = isObject(context.containerDimensions)
+      ? context.containerDimensions
+      : {}
+    for (const axis of ["height", "width"]) {
+      const maxAxis = "max" + axis[0].toUpperCase() + axis.slice(1)
+      const fixed = Number.isFinite(dims[axis]) && dims[axis] >= 0
+      const maximum = Number.isFinite(dims[maxAxis]) && dims[maxAxis] >= 0
+      document.documentElement.style[axis] = fixed ? dims[axis] + "px" : ""
+      document.documentElement.style[maxAxis] =
+        !fixed && maximum ? dims[maxAxis] + "px" : ""
+    }
+    document.documentElement.style.overflow = "auto"
+  }
+
+  function applyHostStyles(styles) {
+    styles = isObject(styles) ? styles : {}
+    injectStyleVariables(isObject(styles.variables) ? styles.variables : {})
+    const existing = document.getElementById("host-font-css")
+    if (existing) existing.remove()
+    if (styles.css && typeof styles.css.fonts === "string") {
+      const element = document.createElement("style")
+      element.id = "host-font-css"
+      element.textContent = styles.css.fonts
+      document.head.appendChild(element)
+    }
+  }
+
   function getMeasuredContentHeight() {
     const bodyRect = document.body.getBoundingClientRect()
     const readyContent = document.querySelector(".app-content.is-ready")
@@ -180,7 +235,18 @@
               children: {
                 name: { type: "string" },
                 description: { type: "string", optional: true },
-                inputSchema: { type: "object", optional: true },
+                inputSchema: {
+                  type: "object",
+                  children: {
+                    type: { type: "string", enum: ["object"] },
+                    properties: { type: "object", optional: true },
+                    required: {
+                      type: "array",
+                      optional: true,
+                      items: { type: "string" },
+                    },
+                  },
+                },
               },
             },
           },
@@ -192,6 +258,7 @@
           children: {
             variables: {
               type: "object",
+              recordValueType: "string",
               optional: true,
               children: styleVariablesSchema,
             },
@@ -209,17 +276,15 @@
           enum: ["inline", "fullscreen", "pip"],
           optional: true,
         },
-        availableDisplayModes: { type: "array", optional: true },
-        // containerDimensions is a union type:
-        // (height | maxHeight) & (width | maxWidth)
-        // We mark all as optional and validate the union logic separately
+        availableDisplayModes: {
+          type: "array",
+          optional: true,
+          items: { type: "string", enum: ["inline", "fullscreen", "pip"] },
+        },
+        // Each axis independently permits fixed, maximum, or omitted (unbounded).
         containerDimensions: {
           type: "object",
           optional: true,
-          unionGroups: [
-            { oneOf: ["height", "maxHeight"], label: "height or maxHeight" },
-            { oneOf: ["width", "maxWidth"], label: "width or maxWidth" },
-          ],
           children: {
             height: { type: "number", optional: true },
             maxHeight: { type: "number", optional: true },
@@ -309,8 +374,7 @@
       document.body.classList.add("display-mode-" + mode)
     }
     // Allow scrolling in fullscreen/pip by overriding html overflow
-    document.documentElement.style.overflow =
-      mode === "fullscreen" || mode === "pip" ? "auto" : ""
+    document.documentElement.style.overflow = "auto"
   }
 
   // ==========================================================================
@@ -848,8 +912,19 @@
       const nextOptionalAncestorPath =
         optionalAncestorPath || (entry.optional ? fullPath : null)
 
+      tests.push({
+        path: fullPath,
+        expectedType: entry.type,
+        enumValues: entry.enum || null,
+        items: entry.items,
+        recordValueType: entry.recordValueType,
+        optional: isOptional,
+        declaredOptional: !!entry.optional,
+        optionalAncestorPath: optionalAncestorPath,
+        parentPath: prefix || null,
+      })
       if (entry.children) {
-        // This is a parent node - recurse into children, don't add a test for this node
+        // Validate both the container and its children.
         const childTests = generateTestCases(
           entry.children,
           fullPath,
@@ -857,17 +932,6 @@
           nextOptionalAncestorPath
         )
         tests.push.apply(tests, childTests)
-      } else {
-        // This is a leaf node - add a test
-        tests.push({
-          path: fullPath,
-          expectedType: entry.type,
-          enumValues: entry.enum || null,
-          optional: isOptional,
-          declaredOptional: !!entry.optional,
-          optionalAncestorPath: optionalAncestorPath,
-          parentPath: prefix || null,
-        })
       }
     }
 
@@ -881,7 +945,7 @@
     const parts = path.split(".")
     let current = obj
     for (let i = 0; i < parts.length; i++) {
-      if (current === null || current === undefined) {
+      if (current === null || typeof current !== "object") {
         return { found: false, value: undefined }
       }
       if (!(parts[i] in current)) {
@@ -948,7 +1012,7 @@
     // Check enum values if specified
     if (testCase.enumValues && testCase.enumValues.indexOf(value) === -1) {
       return {
-        status: "warn",
+        status: "invalid",
         message:
           'Value "' +
           value +
@@ -960,6 +1024,43 @@
       }
     }
 
+    if (actualType === "number" && !Number.isFinite(value)) {
+      return {
+        status: "invalid",
+        message: "Expected finite number",
+        actualValue: value,
+        actualType,
+      }
+    }
+    if (
+      testCase.recordValueType &&
+      Object.values(value).some(
+        (item) => item !== undefined && typeof item !== testCase.recordValueType
+      )
+    ) {
+      return {
+        status: "invalid",
+        message: "Invalid record value",
+        actualValue: value,
+        actualType,
+      }
+    }
+    if (
+      testCase.items &&
+      value.some(function (item) {
+        return (
+          typeof item !== testCase.items.type ||
+          (testCase.items.enum && !testCase.items.enum.includes(item))
+        )
+      })
+    ) {
+      return {
+        status: "invalid",
+        message: "Invalid array member",
+        actualValue: value,
+        actualType,
+      }
+    }
     return {
       status: "provided",
       message: "OK",
@@ -991,7 +1092,7 @@
     }
 
     for (const key in hostData) {
-      if (!hostData.hasOwnProperty(key)) continue
+      if (!Object.prototype.hasOwnProperty.call(hostData, key)) continue
       const fullPath = prefix ? prefix + "." + key : key
 
       if (!(key in schema)) {
@@ -1069,6 +1170,8 @@
 
     let css = ":root {\n"
     for (const [varName, value] of Object.entries(variables)) {
+      if (typeof value !== "string" || !/^--[a-zA-Z0-9_-]+$/.test(varName))
+        continue
       css += "  " + varName + ": " + value + ";\n"
     }
     css += "}\n"
@@ -1095,6 +1198,7 @@
     }
 
     for (const [key, value] of Object.entries(variables)) {
+      if (typeof value !== "string") continue
       if (key.startsWith("--color-background-")) {
         categories["Background Colors"].push([key, value])
       } else if (key.startsWith("--color-text-")) {
@@ -1245,6 +1349,7 @@
   }
 
   function closeConnection(reason) {
+    hostRequestHandlers = {}
     setConnectionState("closed")
     disableSizeReporting()
     failPendingRequests(reason || new Error("MCP connection closed"))
@@ -1313,6 +1418,8 @@
     if (subtitle) subtitle.textContent = "Connection failed: " + message
     const loadingText = document.querySelector(".app-loading-text")
     if (loadingText) loadingText.textContent = "Connection failed: " + message
+    const spinner = document.querySelector(".app-loading-spinner")
+    if (spinner) spinner.style.display = "none"
   }
 
   function handleMessage(event) {
@@ -1377,6 +1484,26 @@
       if (data.method === "ui/resource-teardown") {
         sendResponse(data.id, data.method, {})
         closeConnection(new Error("Host requested resource teardown"))
+      } else if (data.method === "ping") {
+        sendResponse(data.id, data.method, {})
+      } else if (
+        connectionState === "initialized" &&
+        Object.hasOwn(hostRequestHandlers, data.method)
+      ) {
+        const handler = hostRequestHandlers[data.method]
+        Promise.resolve()
+          .then(() => {
+            if (connectionState === "initialized")
+              return handler(data.params || {})
+          })
+          .then((result) => {
+            if (connectionState === "initialized")
+              sendResponse(data.id, data.method, result)
+          })
+          .catch((error) => {
+            if (connectionState === "initialized")
+              sendErrorResponse(data.id, data.method, -32602, error.message)
+          })
       } else {
         sendErrorResponse(
           data.id,
@@ -1401,6 +1528,9 @@
       }
       if (currentHostInfo && currentHostInfo.hostContext) {
         Object.assign(currentHostInfo.hostContext, data.params)
+        applyHostLayout(currentHostInfo.hostContext)
+        if (data.params && "styles" in data.params)
+          applyHostStyles(data.params.styles)
       }
       window.dispatchEvent(
         new CustomEvent("mcp-host-context-changed", { detail: data.params })
@@ -1409,6 +1539,7 @@
 
     // Handle tool-input notification
     if (data.method === "ui/notifications/tool-input") {
+      recordLifecycle(data.method, data.params)
       currentToolData.toolInput = data.params
       window.dispatchEvent(
         new CustomEvent("mcp-tool-input", { detail: data.params })
@@ -1417,6 +1548,7 @@
 
     // Handle tool-result notification
     if (data.method === "ui/notifications/tool-result") {
+      recordLifecycle(data.method, data.params)
       currentToolData.toolResult = data.params
       window.dispatchEvent(
         new CustomEvent("mcp-tool-result", { detail: data.params })
@@ -1425,6 +1557,7 @@
 
     // Handle tool-input-partial notification
     if (data.method === "ui/notifications/tool-input-partial") {
+      recordLifecycle(data.method, data.params)
       currentToolData.toolInputPartial = data.params
       window.dispatchEvent(
         new CustomEvent("mcp-tool-input-partial", { detail: data.params })
@@ -1433,6 +1566,8 @@
 
     // Handle tool-cancelled notification
     if (data.method === "ui/notifications/tool-cancelled") {
+      recordLifecycle(data.method, data.params)
+      setReady()
       currentToolData.toolCancelled = data.params
       window.dispatchEvent(
         new CustomEvent("mcp-tool-cancelled", { detail: data.params })
@@ -1457,10 +1592,14 @@
     const clientName = options.clientName || "MCP App"
     const clientVersion = options.clientVersion || "1.0.0"
     const onInitialized = options.onInitialized || function () {}
-
     if (connectionState === "connecting" || connectionState === "initialized") {
       throw new Error("MCP connection is already " + connectionState)
     }
+    hostRequestHandlers = options.hostRequestHandlers || {}
+    lifecycleEvents.length = 0
+    lifecycleSequence = 0
+    completeInputReceived = false
+    toolTerminal = false
     disableSizeReporting()
     setConnectionState("connecting")
 
@@ -1471,23 +1610,20 @@
         options.availableDisplayModes === null
           ? null
           : options.availableDisplayModes || ["inline", "fullscreen", "pip"]
-      const title = options.title || null
       const initParams = {
         protocolVersion: MCP_APPS_SPEC_VERSION,
-        capabilities: {},
-        clientInfo: {
+        appInfo: {
           name: clientName,
           version: clientVersion,
+          ...(options.title ? { title: options.title } : {}),
         },
         appCapabilities: {
+          ...(options.appCapabilities || {}),
           ...(availableDisplayModes
             ? { availableDisplayModes: availableDisplayModes }
             : {}),
-          ...(title ? { title: title } : {}),
         },
       }
-      // MCP Jam compatibility - also send as appInfo
-      initParams.appInfo = initParams.clientInfo
 
       const result = await sendRequest("ui/initialize", initParams, {
         timeoutMs: INITIALIZE_TIMEOUT_MS,
@@ -1519,6 +1655,9 @@
 
     currentHostInfo = hostInfo
     currentCompatibility = normalized.compatibility
+    applyHostLayout(hostInfo.hostContext)
+    if (hostInfo.hostContext.styles)
+      applyHostStyles(hostInfo.hostContext.styles)
 
     const subtitle = document.getElementById("host-info-subtitle")
     if (subtitle) {
@@ -1540,6 +1679,7 @@
     sendNotification("ui/notifications/initialized")
     setConnectionState("initialized")
     enableSizeReporting()
+    setReady()
 
     try {
       onInitialized(hostInfo)
@@ -1725,6 +1865,11 @@
     getToolData: function () {
       return currentToolData
     },
+    getLifecycleEvents: function () {
+      return lifecycleEvents.slice()
+    },
+    applyHostLayout: applyHostLayout,
+    applyHostStyles: applyHostStyles,
     getMessageLog: function () {
       return messageLog.slice()
     },

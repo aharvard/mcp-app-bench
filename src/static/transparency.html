@@ -110,7 +110,7 @@
       <h1>Transparency Inspector</h1>
       <p id="host-info-subtitle" role="status">Connecting...</p>
       <p class="subtitle">
-        Tests whether the host allows iframe transparency across color schemes
+        Observes local CSS; host compositing requires a visual check
       </p>
 
       <div class="tests">
@@ -144,9 +144,10 @@
       </div>
 
       <p class="note">
-        ℹ If Test 1 fails in dark mode but passes in light mode, the host
-        document likely needs <code>color-scheme: light dark</code> to allow
-        cross-scheme iframe transparency. See
+        Manual host check: place this view over a known colored or patterned
+        host background, then toggle host and OS light/dark preferences separately.
+        Verify the host background is visible through the view. Local computed
+        alpha alone cannot certify iframe compositing. See
         <a href="https://fvsch.com/transparent-iframes" style="color: inherit"
           >fvsch.com/transparent-iframes</a
         >
@@ -191,11 +192,11 @@
 
           if (alpha === 0) {
             el.className = "result pass"
-            el.textContent = "✓ Transparent — background: " + bg
+            el.textContent = "Local body is transparent — background: " + bg + ". Host compositing is not verified."
           } else {
             el.className = "result fail"
             el.textContent =
-              "✗ Opaque — background: " + bg + " (alpha: " + alpha + ")"
+              "Local body is opaque — background: " + bg + " (alpha: " + alpha + "). This is not a host conformance verdict."
           }
         }
 
@@ -243,7 +244,7 @@
           var iframeResolvedTheme = prefersDark ? "dark" : "light"
           var match = hostTheme === iframeResolvedTheme
 
-          el.className = "result " + (match ? "pass" : "fail")
+          el.className = "result unknown"
           el.innerHTML =
             "Host theme: <strong>" +
             hostTheme +
@@ -251,7 +252,7 @@
             "Iframe resolved: <strong>" +
             iframeResolvedTheme +
             "</strong> · " +
-            (match ? "✓ Aligned" : "✗ Mismatch — may cause opacity issues")
+            (match ? "Preferences align" : "Different preferences; host theme can differ from OS preference")
         }
 
         // Size reporting is handled by the shell's ResizeObserver once the

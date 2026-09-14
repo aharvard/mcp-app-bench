@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="{{BASE_URL}}/shell/shell.css?v={{CACHE_HASH}}"></head>
+<body data-profile="{{PROFILE}}" data-base-url="{{BASE_URL}}">
+<div id="app-loading" class="app-loading"><div class="app-loading-spinner"></div><div class="app-loading-text">Connecting…</div></div>
+<main id="app-content" class="app-content">
+<h1>Audit probes — {{PROFILE}}</h1><p id="host-info-subtitle">Connecting…</p>
+<p>Stable: 2026-01-26. Draft snapshot: 6d9bdc7 (not a negotiated protocol version). Optional absence is unsupported, not a failure. Acknowledgement is not proof of model delivery or browser behavior.</p>
+<label><input type="checkbox" id="negative"> Explicit negative probes: allow requests without advertised capability</label>
+<div id="probes"></div>
+<h2>Human observations</h2>
+<p>For context probes, ask in a NEW chat turn: “What is the current bench token from app context?” Do not paste the token into chat. After overwrite only the newest context should be provided; clearing removes this app’s contribution, not the model’s conversation memory. Inspect host context injection separately if earlier answers already revealed tokens.</p>
+<p>Check the host’s model-facing tool list: app-only must be absent, both/model-only/default present. Check downloaded file bytes, sampling approval, and tool-list refresh in the host; request success alone cannot verify these.</p>
+<label>Record observed behavior and evidence <textarea id="evidence" rows="4" style="width:100%"></textarea></label>
+<button id="record" class="action-btn">Record observation</button>
+<pre id="results" style="white-space:pre-wrap;overflow-wrap:anywhere" aria-live="polite"></pre>
+</main>
+<script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
+<script src="{{BASE_URL}}/shell/audit.js?v={{CACHE_HASH}}"></script>
+</body></html>
