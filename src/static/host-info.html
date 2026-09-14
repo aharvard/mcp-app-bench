@@ -94,7 +94,8 @@
             return false;
           }
 
-          return MCPAppShell.getValueByPath(hostData, test.optionalAncestorPath).found;
+          const parent = MCPAppShell.getValueByPath(hostData, test.parentPath);
+          return parent.found && parent.value !== null && typeof parent.value === 'object' && !Array.isArray(parent.value);
         }
 
         function summarizeResults(hostData) {
@@ -133,7 +134,7 @@
           const optionalPercentage =
             optionalTotal > 0 ? Math.round((optionalCovered / optionalTotal) * 100) : 0;
           const grade =
-            invalidCount > 0
+            invalidCount > 0 || requiredMissing > 0
               ? { letter: 'F', color: 'fail' }
               : MCPAppShell.getGrade(requiredPercentage);
 
@@ -226,6 +227,7 @@
 
           const groups = groupTestsByProperty(testCases, testResults);
           const hostInfo = MCPAppShell.getHostInfo();
+          const compatibility = MCPAppShell.getCompatibility();
           const hostData = { hostContext: hostInfo && hostInfo.hostContext };
           const summary = summarizeResults(hostData);
           
@@ -240,7 +242,10 @@
             html += '<div class="test-grade">';
             html += '<div class="test-grade-circle is-' + summary.grade.color + '">' + summary.grade.letter + '</div>';
             html += '<div class="test-grade-info">';
-            html += '<div class="test-grade-title">HostContext Conformance</div>';
+            html += '<div class="test-grade-title">' +
+              (compatibility && !compatibility.matchesBenchVersion
+                ? 'HostContext Reference Comparison'
+                : 'HostContext Conformance') + '</div>';
             html += '<div class="test-grade-subtitle">';
             if (summary.requiredTotal > 0) {
               html += '<span class="test-grade-percentage">' + summary.requiredPercentage + '%</span> of required properties valid';
@@ -389,7 +394,7 @@
             html += '<div class="test-raw-data' + (rawDataExpanded ? ' is-expanded' : '') + '" id="raw-data-section">';
             html += '<div class="test-raw-data-header">';
             html += '<span class="test-raw-data-toggle">▶</span>';
-            html += '<span class="test-raw-data-title">Raw Host Data</span>';
+            html += '<span class="test-raw-data-title">Host Data (normalized; raw reply is in the message log)</span>';
             html += '</div>';
             html += '<div class="test-raw-data-content" id="raw-data-content"></div>';
             html += '</div>';
@@ -501,7 +506,7 @@
           clientName: 'Host Info Inspector',
           clientVersion: '1.0.0',
           onInitialized: function (result) {
-            // Content will render when tool-result is received
+            runTests({ animate: false });
           }
         });
 

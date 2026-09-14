@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Security probes</title>
+<style>body{font:15px system-ui;padding:20px;overflow:auto}button{margin:6px;padding:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere}iframe{width:260px;height:70px}</style></head>
+<body><h1>Security probes: {{POLICY}}</h1><p id="host-info-subtitle">Connecting…</p>
+<p>This self-contained fixture needs no external script. Declared policy requests the bench origin for all four CSP directives. Omitted policy requests no external origins or permissions. An error without a matching CSP violation is inconclusive, not a security pass. Permission denial is a valid optional/policy outcome.</p>
+<p>Run each fixture in a fresh host view. For granted and denied permission checks, change browser/host permission settings between runs. Camera/microphone tracks are stopped immediately; location coordinates are never recorded. Clipboard test replaces clipboard text only after you click it.</p>
+<button id="network">Test connect/resource/frame/base</button><button id="isolation">Check parent DOM isolation</button>
+<button id="camera">Request camera</button><button id="microphone">Request microphone</button><button id="geolocation">Request location permission</button><button id="clipboardWrite">Write test text to clipboard</button>
+<div id="targets"></div><pre id="results" aria-live="polite"></pre>
+<script>{{SHELL_INLINE}}</script><script>
+(() => {
+  const base = '{{BASE_URL}}'; const records = [];
+  const report = (probe, outcome, evidence) => { records.push({probe,outcome,evidence}); document.getElementById('results').textContent = JSON.stringify(records,null,2); };
+  MCPAppShell.initialize({clientName:'Security probes',onInitialized:info=>report('initialize','connected',info)});
+  document.addEventListener('securitypolicyviolation', e => report('CSP', 'observed violation', {directive:e.effectiveDirective,blockedURI:e.blockedURI,disposition:e.disposition}));
+  window.addEventListener('message', e => { if (e.data === 'bench-frame-loaded' && Array.from(document.querySelectorAll('iframe')).some(f => f.contentWindow === e.source)) report('frame-src','observed execution',e.origin); });
+  document.getElementById('network').onclick = async () => {
+    const url = base + '/fixtures/download.txt';
+    fetch(url).then(r => r.text()).then(text => report('connect-src',text.trim()==='MCP App Bench download fixture v1'?'observed fixture':'unexpected content',text)).catch(e=>report('connect-src','failed — correlate CSP event',e.message));
+    const image = new Image(); image.onload=()=>report('resource','observed load',image.naturalWidth); image.onerror=()=>report('resource','failed — correlate CSP event'); image.src=base+'/fixtures/pixel.svg'; document.getElementById('targets').append(image);
+    const frame=document.createElement('iframe'); frame.src=base+'/fixtures/frame.html'; document.getElementById('targets').append(frame);
+    const old=document.querySelector('base'); if(old)old.remove(); const tag=document.createElement('base'); tag.href=base+'/fixtures/'; document.head.append(tag); report('base-uri',document.baseURI===tag.href?'observed applied':'not applied',document.baseURI);
+  };
+  document.getElementById('isolation').onclick=()=>{ try { const doc=parent.document; report('isolation',parent===window?'not embedded':doc?'FAIL: parent DOM accessible':'inconclusive'); } catch(e) {report('isolation','observed DOM isolation',e.name);} };
+  for (const kind of ['camera','microphone','geolocation','clipboardWrite']) document.getElementById(kind).onclick=async()=>{
+    try {
+      if(kind==='camera'||kind==='microphone') { const stream=await navigator.mediaDevices.getUserMedia(kind==='camera'?{video:true}:{audio:true}); stream.getTracks().forEach(t=>t.stop()); }
+      if(kind==='geolocation') await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(()=>resolve(),reject,{timeout:5000,maximumAge:0}));
+      if(kind==='clipboardWrite') await navigator.clipboard.writeText('MCP App Bench permission fixture v1');
+      report(kind,'observed granted');
+    } catch(e) {report(kind,'denied or unavailable — valid policy outcome',{name:e.name,message:e.message});}
+  };
+})();
+</script></body></html>

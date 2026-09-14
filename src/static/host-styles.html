@@ -1244,16 +1244,16 @@
         }
 
         function renderCssFallbacksSection(styles) {
-          if (!styles.css || !styles.css.fonts) return ""
+          if (!styles.css || typeof styles.css.fonts !== 'string' || !styles.css.fonts) return ""
 
           return renderSection(
             "CSS Fallbacks",
-            "Host-provided font fallback CSS emitted alongside the token set.",
+            "Host font CSS is injected into this document. CSS injection is not proof of a successful font fetch. Browser font-set status: " + (document.fonts ? document.fonts.status : "unavailable") + ". Inspect the intended font family and Network/CSP errors to verify loading.",
             renderSubsection(
               "Font CSS",
               '<pre class="css-fallbacks-block">' +
                 esc(styles.css.fonts) +
-                "</pre>"
+                "</pre><p>Font faces: " + esc(document.fonts ? Array.from(document.fonts).map(face => face.family + ': ' + face.status).join(', ') || 'none registered' : 'API unavailable') + "</p>"
             )
           )
         }
@@ -1272,8 +1272,8 @@
 
           if (
             !styles ||
-            !styles.variables ||
-            Object.keys(styles.variables).length === 0
+            ((!styles.variables || Object.keys(styles.variables).length === 0) &&
+              !(styles.css && styles.css.fonts))
           ) {
             container.innerHTML =
               '<div class="styles-empty">No styles provided by host</div>'
@@ -1281,10 +1281,8 @@
             return
           }
 
-          MCPAppShell.injectStyleVariables(styles.variables)
-
           var categories = MCPAppShell.categorizeStyleVariables(
-            styles.variables
+            styles.variables || {}
           )
           var html = ""
 
@@ -1299,6 +1297,10 @@
           MCPAppShell.sendSizeChanged()
         }
 
+        if (document.fonts) {
+          document.fonts.addEventListener('loadingdone', renderHostStyles)
+          document.fonts.addEventListener('loadingerror', renderHostStyles)
+        }
         MCPAppShell.initialize({
           title: "Host Styles",
           clientName: "Host Styles Inspector",
@@ -1308,6 +1310,7 @@
               hostTheme = result.hostContext.theme
             }
             syncHostTheme()
+            renderHostStyles()
           },
         })
 

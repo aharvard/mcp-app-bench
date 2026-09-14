@@ -14,6 +14,77 @@ import { initMcpAppServer } from "../src/mcp-app-server.js"
 import { INSPECT_TOOL_DATA_URI } from "../src/utils/constants.js"
 
 const MODERN_VERSION = "2026-07-28"
+
+test("audit discovery fixtures expose deterministic valid and explicitly negative resources", async () => {
+  await withClient(true, async (client) => {
+    const tools = await client.listTools()
+    for (const variant of [
+      "text",
+      "blob",
+      "legacy",
+      "missing",
+      "malformed",
+      "precedence",
+    ]) {
+      assert.ok(
+        tools.tools.some((t) => t.name === "audit-discovery-" + variant)
+      )
+      const result = await client.callTool({
+        name: "audit-discovery-" + variant,
+        arguments: {},
+      })
+      assert.notEqual(result.isError, true)
+    }
+    const text = await client.readResource({ uri: "ui://audit/text" })
+    const blob = await client.readResource({ uri: "ui://audit/blob" })
+    assert.equal(
+      Buffer.from(
+        (blob.contents[0] as { blob: string }).blob,
+        "base64"
+      ).toString(),
+      (text.contents[0] as { text: string }).text
+    )
+    const demo = await client.readResource({
+      uri: "resource://example/demo-resource",
+    })
+    assert.equal(
+      (demo.contents[0] as { text: string }).text,
+      "MCP App Bench resource fixture v1"
+    )
+    await assert.rejects(client.readResource({ uri: "ui://audit/missing" }))
+    const malformed = await client.readResource({ uri: "ui://audit/malformed" })
+    assert.equal(malformed.contents[0].mimeType, "application/json")
+    const listed = await client.listResources()
+    assert.equal(
+      (
+        listed.resources.find((r) => r.uri === "ui://audit/precedence")?._meta
+          ?.ui as { prefersBorder: boolean }
+      ).prefersBorder,
+      true
+    )
+    const read = await client.readResource({ uri: "ui://audit/precedence" })
+    assert.equal(
+      (read.contents[0]._meta?.ui as { prefersBorder: boolean }).prefersBorder,
+      false
+    )
+    for (const variant of [
+      "stable",
+      "draft",
+      "inline-only",
+      "security-declared",
+      "security-omitted",
+    ]) {
+      const resource = await client.readResource({
+        uri: "ui://audit/" + variant,
+      })
+      assert.match(
+        (resource.contents[0] as { text: string }).text,
+        /MCPAppShell|shell\/shell.js/
+      )
+      assert.ok(!(resource.contents[0] as { text: string }).text.includes("{{"))
+    }
+  })
+})
 const MODERN_ENVELOPE = {
   "io.modelcontextprotocol/protocolVersion": MODERN_VERSION,
   "io.modelcontextprotocol/clientInfo": {

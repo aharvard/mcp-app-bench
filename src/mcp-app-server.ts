@@ -28,6 +28,7 @@ import {
   INSPECT_MEDIA_PLAYER_URI,
 } from "./utils/constants.js"
 import { loadAppHtml } from "./utils/load-app-html.js"
+import { registerAuditFixtures } from "./audit-fixtures.js"
 
 export function initMcpAppServer(): McpServer {
   console.log(`\n🚀 Initializing MCP server (MCP Apps mode)`)
@@ -95,6 +96,24 @@ export function initMcpAppServer(): McpServer {
   // ==========================================================================
   // Resources - Register immediately (always available)
   // ==========================================================================
+
+  server.registerResource(
+    "demo-resource",
+    "resource://example/demo-resource",
+    {
+      mimeType: "text/plain",
+      description: "Deterministic resource-read fixture",
+    },
+    async () => ({
+      contents: [
+        {
+          uri: "resource://example/demo-resource",
+          mimeType: "text/plain",
+          text: "MCP App Bench resource fixture v1",
+        },
+      ],
+    })
+  )
 
   // Main launcher resource
   server.registerResource(
@@ -618,7 +637,7 @@ export function initMcpAppServer(): McpServer {
     {
       title: "Display Modes Inspector (Undeclared)",
       description:
-        "Test that the host respects declared modes — this app only declares inline but renders fullscreen/pip buttons",
+        "Test omitted app display-mode declaration; host may decline mode requests",
       mimeType: MCP_APPS_MIME_TYPE,
     },
     async () => ({
@@ -644,13 +663,13 @@ export function initMcpAppServer(): McpServer {
     })
   )
 
-  // Display Modes inspector tool (undeclared — only declares inline, but UI has fullscreen/pip buttons)
+  // Display Modes inspector tool (availableDisplayModes is omitted).
   server.registerTool(
     "inspect-display-modes-undeclared",
     {
       title: "Display Modes Inspector (Undeclared)",
       description:
-        "Test that the host respects declared modes — this app only declares inline but renders fullscreen/pip buttons",
+        "Test omitted availableDisplayModes; normal requests are limited to modes offered by the host",
       inputSchema: withFooterInputSchema({}),
       outputSchema: withFooterOutputSchema({}),
       _meta: {
@@ -664,7 +683,7 @@ export function initMcpAppServer(): McpServer {
         content: [
           {
             type: "text",
-            text: `Display Modes Inspector loaded. Declared modes: inline only (fullscreen/pip undeclared but UI has buttons)`,
+            text: `Display Modes Inspector loaded. App display-mode declaration is omitted.`,
           },
         ],
         structuredContent: buildFooterStructuredContent(args.joke),
@@ -1094,5 +1113,6 @@ export function initMcpAppServer(): McpServer {
     }
   )
 
+  registerAuditFixtures(server)
   return server
 }

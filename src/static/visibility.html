@@ -123,6 +123,10 @@
         var resultEl = document.getElementById('app-only-result');
 
         btn.addEventListener('click', function () {
+          if (!MCPAppShell.getHostInfo()?.hostCapabilities?.serverTools) {
+            resultEl.textContent = 'Unsupported: optional serverTools proxy is not advertised. Open inspect-audit-stable for explicit negative probes and all four visibility cases.';
+            return;
+          }
           resultEl.textContent = 'Calling visibility-app-only via host proxy...';
 
           // Use tools/call through the host's serverTools proxy
@@ -131,7 +135,7 @@
             arguments: {}
           })
             .then(function (result) {
-              resultEl.textContent = '✅ Success: ' + JSON.stringify(result, null, 2);
+              resultEl.textContent = (result && result.isError ? 'Tool execution error (not a successful call): ' : 'Proxy result (model-facing filtering still requires host inspection): ') + JSON.stringify(result, null, 2);
               MCPAppShell.sendSizeChanged();
             })
             .catch(function (err) {

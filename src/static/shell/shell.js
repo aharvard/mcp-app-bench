@@ -12,7 +12,16 @@
 
   let requestId = 1
   const pendingRequests = new Map()
+  // Requests that timed out locally, kept so a late host reply can still be
+  // logged instead of silently dropped.
+  const expiredRequests = new Map()
+  const MAX_EXPIRED_REQUESTS = 50
+  const INITIALIZE_TIMEOUT_MS = 10000
+  // Ordinary requests may wait on the user (open-link confirmations) or on a
+  // tool call, so the default is generous. Pass { timeoutMs: 0 } to disable.
+  const DEFAULT_REQUEST_TIMEOUT_MS = 60000
   let currentHostInfo = null
+  let currentCompatibility = null
   let currentToolData = {
     toolInput: null,
     toolInputPartial: null,
@@ -20,9 +29,67 @@
     toolCancelled: null,
   }
   let isReady = false
+  let connectionState = "closed"
+  let sizeReportingEnabled = false
+  let resizeObserver = null
   let lastReportedHeight = null
   let pendingReportedHeight = null
   let sizeChangeFrame = null
+
+  const lifecycleEvents = []
+  let lifecycleSequence = 0
+  let hostRequestHandlers = {}
+  let completeInputReceived = false
+  let toolTerminal = false
+
+  function recordLifecycle(method, params) {
+    const problems = []
+    if (method.endsWith("tool-input-partial") && completeInputReceived)
+      problems.push("Partial input after complete input")
+    if (method.endsWith("tool-result") && !completeInputReceived)
+      problems.push("Result without required complete input")
+    if (method.endsWith("tool-input") && completeInputReceived)
+      problems.push("Duplicate complete input")
+    if (toolTerminal) problems.push("Event after terminal result/cancellation")
+    if (method.endsWith("tool-input")) completeInputReceived = true
+    if (method.endsWith("tool-result") || method.endsWith("tool-cancelled"))
+      toolTerminal = true
+    lifecycleEvents.push({
+      sequence: ++lifecycleSequence,
+      method,
+      params,
+      problems,
+    })
+    if (lifecycleEvents.length > 200) lifecycleEvents.shift()
+  }
+
+  function applyHostLayout(context) {
+    const dims = isObject(context.containerDimensions)
+      ? context.containerDimensions
+      : {}
+    for (const axis of ["height", "width"]) {
+      const maxAxis = "max" + axis[0].toUpperCase() + axis.slice(1)
+      const fixed = Number.isFinite(dims[axis]) && dims[axis] >= 0
+      const maximum = Number.isFinite(dims[maxAxis]) && dims[maxAxis] >= 0
+      document.documentElement.style[axis] = fixed ? dims[axis] + "px" : ""
+      document.documentElement.style[maxAxis] =
+        !fixed && maximum ? dims[maxAxis] + "px" : ""
+    }
+    document.documentElement.style.overflow = "auto"
+  }
+
+  function applyHostStyles(styles) {
+    styles = isObject(styles) ? styles : {}
+    injectStyleVariables(isObject(styles.variables) ? styles.variables : {})
+    const existing = document.getElementById("host-font-css")
+    if (existing) existing.remove()
+    if (styles.css && typeof styles.css.fonts === "string") {
+      const element = document.createElement("style")
+      element.id = "host-font-css"
+      element.textContent = styles.css.fonts
+      document.head.appendChild(element)
+    }
+  }
 
   function getMeasuredContentHeight() {
     const bodyRect = document.body.getBoundingClientRect()
@@ -168,7 +235,18 @@
               children: {
                 name: { type: "string" },
                 description: { type: "string", optional: true },
-                inputSchema: { type: "object", optional: true },
+                inputSchema: {
+                  type: "object",
+                  children: {
+                    type: { type: "string", enum: ["object"] },
+                    properties: { type: "object", optional: true },
+                    required: {
+                      type: "array",
+                      optional: true,
+                      items: { type: "string" },
+                    },
+                  },
+                },
               },
             },
           },
@@ -180,6 +258,7 @@
           children: {
             variables: {
               type: "object",
+              recordValueType: "string",
               optional: true,
               children: styleVariablesSchema,
             },
@@ -197,17 +276,15 @@
           enum: ["inline", "fullscreen", "pip"],
           optional: true,
         },
-        availableDisplayModes: { type: "array", optional: true },
-        // containerDimensions is a union type:
-        // (height | maxHeight) & (width | maxWidth)
-        // We mark all as optional and validate the union logic separately
+        availableDisplayModes: {
+          type: "array",
+          optional: true,
+          items: { type: "string", enum: ["inline", "fullscreen", "pip"] },
+        },
+        // Each axis independently permits fixed, maximum, or omitted (unbounded).
         containerDimensions: {
           type: "object",
           optional: true,
-          unionGroups: [
-            { oneOf: ["height", "maxHeight"], label: "height or maxHeight" },
-            { oneOf: ["width", "maxWidth"], label: "width or maxWidth" },
-          ],
           children: {
             height: { type: "number", optional: true },
             maxHeight: { type: "number", optional: true },
@@ -297,8 +374,7 @@
       document.body.classList.add("display-mode-" + mode)
     }
     // Allow scrolling in fullscreen/pip by overriding html overflow
-    document.documentElement.style.overflow =
-      mode === "fullscreen" || mode === "pip" ? "auto" : ""
+    document.documentElement.style.overflow = "auto"
   }
 
   // ==========================================================================
@@ -306,6 +382,8 @@
   // ==========================================================================
 
   function sendSizeChanged() {
+    if (!sizeReportingEnabled) return
+
     const measuredHeight = getMeasuredContentHeight()
 
     pendingReportedHeight = measuredHeight
@@ -362,31 +440,78 @@
     )
   }
 
-  function sendRequest(method, params) {
+  // JSON-RPC params are optional; omit the key entirely rather than posting an
+  // own `params: undefined` property that strict hosts would reject.
+  function withParams(message, params) {
+    if (params !== undefined) message.params = params
+    return message
+  }
+
+  function rememberExpiredRequest(id, method) {
+    expiredRequests.set(id, method)
+    if (expiredRequests.size > MAX_EXPIRED_REQUESTS) {
+      expiredRequests.delete(expiredRequests.keys().next().value)
+    }
+  }
+
+  /**
+   * Send a JSON-RPC request to the host.
+   * options.timeoutMs — milliseconds before the request rejects locally.
+   *   Defaults to DEFAULT_REQUEST_TIMEOUT_MS; 0 or a non-finite value disables
+   *   the timeout so user-gated requests can wait indefinitely.
+   */
+  function sendRequest(method, params, options) {
+    options = options || {}
     return new Promise((resolve, reject) => {
+      if (
+        connectionState !== "initialized" &&
+        !(connectionState === "connecting" && method === "ui/initialize")
+      ) {
+        reject(new Error("MCP connection is " + connectionState))
+        return
+      }
       const id = requestId++
-      pendingRequests.set(id, { resolve, reject, method, params })
+      const timeoutMs =
+        typeof options.timeoutMs === "number"
+          ? options.timeoutMs
+          : DEFAULT_REQUEST_TIMEOUT_MS
+      let timeoutId = null
+      if (Number.isFinite(timeoutMs) && timeoutMs > 0) {
+        timeoutId = window.setTimeout(function () {
+          if (!pendingRequests.has(id)) return
+          pendingRequests.delete(id)
+          rememberExpiredRequest(id, method)
+          console.warn(
+            "[MCP Shell] " +
+              method +
+              " request timed out after " +
+              timeoutMs +
+              "ms"
+          )
+          reject(new Error(method + " request timed out"))
+        }, timeoutMs)
+      }
+      pendingRequests.set(id, { resolve, reject, method, timeoutId })
       logMessage("sent", method + " (request)", params)
       window.parent.postMessage(
-        {
-          jsonrpc: "2.0",
-          id: id,
-          method: method,
-          params: params,
-        },
+        withParams({ jsonrpc: "2.0", id: id, method: method }, params),
         "*"
       )
     })
   }
 
   function sendNotification(method, params) {
+    if (
+      connectionState !== "initialized" &&
+      !(
+        connectionState === "connecting" &&
+        method === "ui/notifications/initialized"
+      )
+    )
+      return
     logMessage("sent", method + " (notification)", params)
     window.parent.postMessage(
-      {
-        jsonrpc: "2.0",
-        method: method,
-        params: params,
-      },
+      withParams({ jsonrpc: "2.0", method: method }, params),
       "*"
     )
   }
@@ -787,8 +912,19 @@
       const nextOptionalAncestorPath =
         optionalAncestorPath || (entry.optional ? fullPath : null)
 
+      tests.push({
+        path: fullPath,
+        expectedType: entry.type,
+        enumValues: entry.enum || null,
+        items: entry.items,
+        recordValueType: entry.recordValueType,
+        optional: isOptional,
+        declaredOptional: !!entry.optional,
+        optionalAncestorPath: optionalAncestorPath,
+        parentPath: prefix || null,
+      })
       if (entry.children) {
-        // This is a parent node - recurse into children, don't add a test for this node
+        // Validate both the container and its children.
         const childTests = generateTestCases(
           entry.children,
           fullPath,
@@ -796,17 +932,6 @@
           nextOptionalAncestorPath
         )
         tests.push.apply(tests, childTests)
-      } else {
-        // This is a leaf node - add a test
-        tests.push({
-          path: fullPath,
-          expectedType: entry.type,
-          enumValues: entry.enum || null,
-          optional: isOptional,
-          declaredOptional: !!entry.optional,
-          optionalAncestorPath: optionalAncestorPath,
-          parentPath: prefix || null,
-        })
       }
     }
 
@@ -820,7 +945,7 @@
     const parts = path.split(".")
     let current = obj
     for (let i = 0; i < parts.length; i++) {
-      if (current === null || current === undefined) {
+      if (current === null || typeof current !== "object") {
         return { found: false, value: undefined }
       }
       if (!(parts[i] in current)) {
@@ -887,7 +1012,7 @@
     // Check enum values if specified
     if (testCase.enumValues && testCase.enumValues.indexOf(value) === -1) {
       return {
-        status: "warn",
+        status: "invalid",
         message:
           'Value "' +
           value +
@@ -899,6 +1024,43 @@
       }
     }
 
+    if (actualType === "number" && !Number.isFinite(value)) {
+      return {
+        status: "invalid",
+        message: "Expected finite number",
+        actualValue: value,
+        actualType,
+      }
+    }
+    if (
+      testCase.recordValueType &&
+      Object.values(value).some(
+        (item) => item !== undefined && typeof item !== testCase.recordValueType
+      )
+    ) {
+      return {
+        status: "invalid",
+        message: "Invalid record value",
+        actualValue: value,
+        actualType,
+      }
+    }
+    if (
+      testCase.items &&
+      value.some(function (item) {
+        return (
+          typeof item !== testCase.items.type ||
+          (testCase.items.enum && !testCase.items.enum.includes(item))
+        )
+      })
+    ) {
+      return {
+        status: "invalid",
+        message: "Invalid array member",
+        actualValue: value,
+        actualType,
+      }
+    }
     return {
       status: "provided",
       message: "OK",
@@ -930,7 +1092,7 @@
     }
 
     for (const key in hostData) {
-      if (!hostData.hasOwnProperty(key)) continue
+      if (!Object.prototype.hasOwnProperty.call(hostData, key)) continue
       const fullPath = prefix ? prefix + "." + key : key
 
       if (!(key in schema)) {
@@ -1008,6 +1170,8 @@
 
     let css = ":root {\n"
     for (const [varName, value] of Object.entries(variables)) {
+      if (typeof value !== "string" || !/^--[a-zA-Z0-9_-]+$/.test(varName))
+        continue
       css += "  " + varName + ": " + value + ";\n"
     }
     css += "}\n"
@@ -1034,6 +1198,7 @@
     }
 
     for (const [key, value] of Object.entries(variables)) {
+      if (typeof value !== "string") continue
       if (key.startsWith("--color-background-")) {
         categories["Background Colors"].push([key, value])
       } else if (key.startsWith("--color-text-")) {
@@ -1069,28 +1234,289 @@
   // Message Handling
   // ==========================================================================
 
-  function handleMessage(event) {
-    const data = event.data
-    if (!data || typeof data !== "object" || data.jsonrpc !== "2.0") return
+  function isObject(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+  }
 
-    // Handle response to our request
-    if ("id" in data && pendingRequests.has(data.id)) {
+  function classifyJsonRpcMessage(data) {
+    if (!isObject(data) || data.jsonrpc !== "2.0") return null
+
+    const hasId = Object.prototype.hasOwnProperty.call(data, "id")
+    const hasMethod = Object.prototype.hasOwnProperty.call(data, "method")
+    const hasResult = Object.prototype.hasOwnProperty.call(data, "result")
+    const hasError = Object.prototype.hasOwnProperty.call(data, "error")
+
+    if (
+      hasId &&
+      !(
+        typeof data.id === "string" ||
+        (typeof data.id === "number" && Number.isFinite(data.id))
+      )
+    )
+      return "invalid"
+    // MCP params are always objects; an own `params: undefined` (which
+    // structured clone preserves) is treated as absent, not as malformed.
+    if (data.params !== undefined && !isObject(data.params)) return "invalid"
+
+    if (hasMethod) {
+      if (typeof data.method !== "string" || hasResult || hasError) {
+        return "invalid"
+      }
+      return hasId ? "request" : "notification"
+    }
+
+    // JSON-RPC permits any `result` value; the bench records whatever the host
+    // actually sent rather than timing the request out.
+    if (
+      hasId &&
+      hasResult !== hasError &&
+      (!hasError ||
+        (isObject(data.error) &&
+          Number.isInteger(data.error.code) &&
+          typeof data.error.message === "string"))
+    ) {
+      return hasError ? "error-response" : "success-response"
+    }
+
+    return "invalid"
+  }
+
+  function sendResponse(id, method, result) {
+    logMessage("sent", method + " (response)", result)
+    window.parent.postMessage({ jsonrpc: "2.0", id: id, result: result }, "*")
+  }
+
+  function sendErrorResponse(id, method, code, message) {
+    const error = { code: code, message: message }
+    logMessage("sent", method + " (error)", error)
+    window.parent.postMessage({ jsonrpc: "2.0", id: id, error: error }, "*")
+  }
+
+  function setConnectionState(nextState, error) {
+    connectionState = nextState
+    window.dispatchEvent(
+      new CustomEvent("mcp-connection-state-changed", {
+        detail: { state: nextState, error: error || null },
+      })
+    )
+  }
+
+  function failPendingRequests(reason) {
+    const error = reason instanceof Error ? reason : new Error(String(reason))
+    pendingRequests.forEach(function (pending) {
+      if (pending.timeoutId !== null) window.clearTimeout(pending.timeoutId)
+      pending.reject(error)
+    })
+    pendingRequests.clear()
+  }
+
+  function stopAutomaticSizing() {
+    if (resizeObserver) {
+      resizeObserver.disconnect()
+      resizeObserver = null
+    }
+    if (sizeChangeFrame !== null) {
+      window.cancelAnimationFrame(sizeChangeFrame)
+      sizeChangeFrame = null
+    }
+    pendingReportedHeight = null
+  }
+
+  function startAutomaticSizing() {
+    if (resizeObserver) return
+    if (typeof ResizeObserver !== "function") {
+      sendSizeChanged()
+      return
+    }
+
+    resizeObserver = new ResizeObserver(sendSizeChanged)
+    resizeObserver.observe(document.body)
+    const appContent = document.getElementById("app-content")
+    if (appContent) resizeObserver.observe(appContent)
+    const appLoading = document.getElementById("app-loading")
+    if (appLoading) resizeObserver.observe(appLoading)
+    sendSizeChanged()
+  }
+
+  function enableSizeReporting() {
+    sizeReportingEnabled = true
+    startAutomaticSizing()
+  }
+
+  function disableSizeReporting() {
+    sizeReportingEnabled = false
+    stopAutomaticSizing()
+  }
+
+  function closeConnection(reason) {
+    hostRequestHandlers = {}
+    setConnectionState("closed")
+    disableSizeReporting()
+    failPendingRequests(reason || new Error("MCP connection closed"))
+  }
+
+  // Only reject what the shell cannot operate without: a string protocol
+  // version and object-shaped (or absent) top-level sections. Value-level
+  // conformance of hostContext is the grading schema's job, so an off-spec
+  // theme or platform is graded rather than turned into a connection failure.
+  function optionalObjectSection(value, name) {
+    if (value === undefined || value === null) return {}
+    if (!isObject(value)) {
+      throw new Error("Initialization result field must be an object: " + name)
+    }
+    return value
+  }
+
+  function normalizeInitializeResult(result) {
+    if (!isObject(result)) {
+      throw new Error("Host returned an invalid initialization result")
+    }
+    if (
+      typeof result.protocolVersion !== "string" ||
+      !result.protocolVersion.trim()
+    ) {
+      throw new Error(
+        "Initialization result is missing a valid protocolVersion"
+      )
+    }
+
+    // Legacy hosts (MCP Jam) reply with appInfo/appCapabilities.
+    let legacyAliases = false
+    let hostInfo = result.hostInfo
+    if (hostInfo == null && isObject(result.appInfo)) {
+      hostInfo = result.appInfo
+      legacyAliases = true
+    }
+    let hostCapabilities = result.hostCapabilities
+    if (hostCapabilities == null && isObject(result.appCapabilities)) {
+      hostCapabilities = result.appCapabilities
+      legacyAliases = true
+    }
+
+    return {
+      hostInfo: {
+        protocolVersion: result.protocolVersion,
+        hostInfo: optionalObjectSection(hostInfo, "hostInfo"),
+        hostCapabilities: optionalObjectSection(
+          hostCapabilities,
+          "hostCapabilities"
+        ),
+        hostContext: optionalObjectSection(result.hostContext, "hostContext"),
+      },
+      compatibility: {
+        protocolVersion: result.protocolVersion,
+        benchVersion: MCP_APPS_SPEC_VERSION,
+        matchesBenchVersion: result.protocolVersion === MCP_APPS_SPEC_VERSION,
+        legacyAliases: legacyAliases,
+      },
+    }
+  }
+
+  function showConnectionError(error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const subtitle = document.getElementById("host-info-subtitle")
+    if (subtitle) subtitle.textContent = "Connection failed: " + message
+    const loadingText = document.querySelector(".app-loading-text")
+    if (loadingText) loadingText.textContent = "Connection failed: " + message
+    const spinner = document.querySelector(".app-loading-spinner")
+    if (spinner) spinner.style.display = "none"
+  }
+
+  function handleMessage(event) {
+    if (event.source !== window.parent) return
+    if (connectionState === "closed" || connectionState === "failed") return
+
+    const data = event.data
+    const messageType = classifyJsonRpcMessage(data)
+    if (messageType === null) return
+    if (messageType === "invalid") {
+      console.error("[MCP Shell] Ignoring invalid JSON-RPC message", data)
+      return
+    }
+
+    // Handle responses to our requests
+    if (
+      messageType === "success-response" ||
+      messageType === "error-response"
+    ) {
+      const isError = messageType === "error-response"
+      const payload = isError ? data.error : data.result
       const pending = pendingRequests.get(data.id)
-      pendingRequests.delete(data.id)
-      if (data.error) {
-        logMessage("received", pending.method + " (error)", data.error)
-        pending.reject(data.error)
+      if (pending) {
+        pendingRequests.delete(data.id)
+        if (pending.timeoutId !== null) window.clearTimeout(pending.timeoutId)
+        logMessage(
+          "received",
+          pending.method + (isError ? " (error)" : " (response)"),
+          payload
+        )
+        if (isError) pending.reject(payload)
+        else pending.resolve(payload)
+        return
+      }
+      // A reply that arrived after the local timeout, or one we never asked
+      // for: record it so the inspectors can show what the host actually did.
+      const expiredMethod = expiredRequests.get(data.id)
+      if (expiredMethod !== undefined) {
+        expiredRequests.delete(data.id)
+        logMessage(
+          "received",
+          expiredMethod + (isError ? " (late error)" : " (late response)"),
+          payload
+        )
       } else {
-        logMessage("received", pending.method + " (response)", data.result)
-        pending.resolve(data.result)
+        logMessage(
+          "received",
+          "unmatched " +
+            (isError ? "error" : "response") +
+            " (id " +
+            String(data.id) +
+            ")",
+          payload
+        )
+      }
+      return
+    }
+
+    // Handle requests from host
+    if (messageType === "request") {
+      logMessage("received", data.method + " (request)", data.params)
+      if (data.method === "ui/resource-teardown") {
+        sendResponse(data.id, data.method, {})
+        closeConnection(new Error("Host requested resource teardown"))
+      } else if (data.method === "ping") {
+        sendResponse(data.id, data.method, {})
+      } else if (
+        connectionState === "initialized" &&
+        Object.hasOwn(hostRequestHandlers, data.method)
+      ) {
+        const handler = hostRequestHandlers[data.method]
+        Promise.resolve()
+          .then(() => {
+            if (connectionState === "initialized")
+              return handler(data.params || {})
+          })
+          .then((result) => {
+            if (connectionState === "initialized")
+              sendResponse(data.id, data.method, result)
+          })
+          .catch((error) => {
+            if (connectionState === "initialized")
+              sendErrorResponse(data.id, data.method, -32602, error.message)
+          })
+      } else {
+        sendErrorResponse(
+          data.id,
+          data.method,
+          -32601,
+          "Method not found: " + data.method
+        )
       }
       return
     }
 
     // Handle notifications from host
-    if (data.method) {
-      logMessage("received", data.method, data.params)
-    }
+    logMessage("received", data.method, data.params)
 
     // Handle host-context-changed notification
     if (data.method === "ui/notifications/host-context-changed") {
@@ -1102,6 +1528,9 @@
       }
       if (currentHostInfo && currentHostInfo.hostContext) {
         Object.assign(currentHostInfo.hostContext, data.params)
+        applyHostLayout(currentHostInfo.hostContext)
+        if (data.params && "styles" in data.params)
+          applyHostStyles(data.params.styles)
       }
       window.dispatchEvent(
         new CustomEvent("mcp-host-context-changed", { detail: data.params })
@@ -1110,6 +1539,7 @@
 
     // Handle tool-input notification
     if (data.method === "ui/notifications/tool-input") {
+      recordLifecycle(data.method, data.params)
       currentToolData.toolInput = data.params
       window.dispatchEvent(
         new CustomEvent("mcp-tool-input", { detail: data.params })
@@ -1118,6 +1548,7 @@
 
     // Handle tool-result notification
     if (data.method === "ui/notifications/tool-result") {
+      recordLifecycle(data.method, data.params)
       currentToolData.toolResult = data.params
       window.dispatchEvent(
         new CustomEvent("mcp-tool-result", { detail: data.params })
@@ -1126,6 +1557,7 @@
 
     // Handle tool-input-partial notification
     if (data.method === "ui/notifications/tool-input-partial") {
+      recordLifecycle(data.method, data.params)
       currentToolData.toolInputPartial = data.params
       window.dispatchEvent(
         new CustomEvent("mcp-tool-input-partial", { detail: data.params })
@@ -1134,24 +1566,12 @@
 
     // Handle tool-cancelled notification
     if (data.method === "ui/notifications/tool-cancelled") {
+      recordLifecycle(data.method, data.params)
+      setReady()
       currentToolData.toolCancelled = data.params
       window.dispatchEvent(
         new CustomEvent("mcp-tool-cancelled", { detail: data.params })
       )
-    }
-
-    // Handle resource-teardown request
-    if (data.method === "ui/resource-teardown") {
-      if ("id" in data) {
-        window.parent.postMessage(
-          {
-            jsonrpc: "2.0",
-            id: data.id,
-            result: {},
-          },
-          "*"
-        )
-      }
     }
   }
 
@@ -1159,90 +1579,118 @@
   // Initialization
   // ==========================================================================
 
+  /**
+   * Perform the ui/initialize handshake.
+   *
+   * Resolves with the normalized host info on success and with `null` on
+   * failure. Failure is reported through the connection state, the
+   * `mcp-connection-state-changed` event, and the visible status text rather
+   * than by rejecting, so pages can call this without a `.catch`.
+   */
   async function initialize(options) {
     options = options || {}
     const clientName = options.clientName || "MCP App"
     const clientVersion = options.clientVersion || "1.0.0"
     const onInitialized = options.onInitialized || function () {}
+    if (connectionState === "connecting" || connectionState === "initialized") {
+      throw new Error("MCP connection is already " + connectionState)
+    }
+    hostRequestHandlers = options.hostRequestHandlers || {}
+    lifecycleEvents.length = 0
+    lifecycleSequence = 0
+    completeInputReceived = false
+    toolTerminal = false
+    disableSizeReporting()
+    setConnectionState("connecting")
 
+    let hostResponded = false
+    let normalized
     try {
       const availableDisplayModes =
         options.availableDisplayModes === null
           ? null
           : options.availableDisplayModes || ["inline", "fullscreen", "pip"]
-      const title = options.title || null
       const initParams = {
         protocolVersion: MCP_APPS_SPEC_VERSION,
-        capabilities: {},
-        clientInfo: {
+        appInfo: {
           name: clientName,
           version: clientVersion,
+          ...(options.title ? { title: options.title } : {}),
         },
         appCapabilities: {
+          ...(options.appCapabilities || {}),
           ...(availableDisplayModes
             ? { availableDisplayModes: availableDisplayModes }
             : {}),
-          ...(title ? { title: title } : {}),
         },
       }
-      // MCP Jam compatibility - also send as appInfo/appCapabilities
-      initParams.appInfo = initParams.clientInfo
-      if (!initParams.appCapabilities) {
-        initParams.appCapabilities = initParams.capabilities
-      }
 
-      const result = await sendRequest("ui/initialize", initParams)
-
-      // MCP Jam compatibility
-      if (result.appInfo && !result.hostInfo) {
-        result.hostInfo = result.appInfo
-      }
-      if (result.appCapabilities && !result.hostCapabilities) {
-        result.hostCapabilities = result.appCapabilities
-      }
-
-      // Apply initial theme and display mode
-      if (result.hostContext && result.hostContext.theme) {
-        setTheme(result.hostContext.theme)
-      }
-      if (result.hostContext && result.hostContext.displayMode) {
-        setDisplayMode(result.hostContext.displayMode)
-      }
-
-      // Store host info
-      currentHostInfo = {
-        protocolVersion: result.protocolVersion,
-        hostInfo: result.hostInfo,
-        hostCapabilities: result.hostCapabilities,
-        hostContext: result.hostContext || {},
-      }
-
-      // Update subtitle if present
-      const subtitle = document.getElementById("host-info-subtitle")
-      if (subtitle && result.hostInfo) {
-        const name = result.hostInfo.name || "Unknown Host"
-        const version = result.hostInfo.version || ""
-        const hostDisplay = version ? name + " v" + version : name
-        subtitle.textContent = "Current host: " + hostDisplay
-      }
-
-      // Send initialized notification
-      sendNotification("ui/notifications/initialized")
-
-      // Call the callback
-      onInitialized(result)
-
-      // Dispatch event
-      window.dispatchEvent(
-        new CustomEvent("mcp-initialized", { detail: result })
-      )
+      const result = await sendRequest("ui/initialize", initParams, {
+        timeoutMs: INITIALIZE_TIMEOUT_MS,
+      })
+      hostResponded = true
+      normalized = normalizeInitializeResult(result)
     } catch (error) {
       console.error("[MCP Shell] Initialization error:", error)
-      const subtitle = document.getElementById("host-info-subtitle")
-      if (subtitle) {
-        subtitle.textContent = "Error: " + error.message
-      }
+      failPendingRequests(error)
+      // Teardown during the handshake already closed the connection.
+      if (connectionState === "closed") return null
+      setConnectionState("failed", error)
+      showConnectionError(error)
+      // The host answered, so it is rendering this view: keep reporting our
+      // size so the connection error is readable instead of clipped.
+      if (hostResponded) enableSizeReporting()
+      return null
     }
+
+    // The handshake succeeded. From here on, failures in page code must not
+    // be mistaken for a broken connection.
+    const hostInfo = normalized.hostInfo
+    if (hostInfo.hostContext.theme) {
+      setTheme(hostInfo.hostContext.theme)
+    }
+    if (hostInfo.hostContext.displayMode) {
+      setDisplayMode(hostInfo.hostContext.displayMode)
+    }
+
+    currentHostInfo = hostInfo
+    currentCompatibility = normalized.compatibility
+    applyHostLayout(hostInfo.hostContext)
+    if (hostInfo.hostContext.styles)
+      applyHostStyles(hostInfo.hostContext.styles)
+
+    const subtitle = document.getElementById("host-info-subtitle")
+    if (subtitle) {
+      const name = hostInfo.hostInfo.name || "Unknown Host"
+      const version = hostInfo.hostInfo.version || ""
+      const hostDisplay = version ? name + " v" + version : name
+      subtitle.textContent =
+        "Current host: " +
+        hostDisplay +
+        " · MCP Apps protocol: " +
+        hostInfo.protocolVersion +
+        " · Bench reference: " +
+        MCP_APPS_SPEC_VERSION +
+        (currentCompatibility.matchesBenchVersion
+          ? ""
+          : " (different versions; results are a reference comparison)")
+    }
+
+    sendNotification("ui/notifications/initialized")
+    setConnectionState("initialized")
+    enableSizeReporting()
+    setReady()
+
+    try {
+      onInitialized(hostInfo)
+    } catch (error) {
+      console.error("[MCP Shell] onInitialized callback failed:", error)
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("mcp-initialized", { detail: hostInfo })
+    )
+    return hostInfo
   }
 
   // ==========================================================================
@@ -1250,21 +1698,6 @@
   // ==========================================================================
 
   window.addEventListener("message", handleMessage)
-
-  // Send initial size
-  sendSizeChanged()
-
-  // Observe size changes
-  const resizeObserver = new ResizeObserver(sendSizeChanged)
-  resizeObserver.observe(document.body)
-  const appContent = document.getElementById("app-content")
-  if (appContent) {
-    resizeObserver.observe(appContent)
-  }
-  const appLoading = document.getElementById("app-loading")
-  if (appLoading) {
-    resizeObserver.observe(appLoading)
-  }
 
   // ==========================================================================
   // Inspector Navigation
@@ -1432,10 +1865,24 @@
     getToolData: function () {
       return currentToolData
     },
+    getLifecycleEvents: function () {
+      return lifecycleEvents.slice()
+    },
+    applyHostLayout: applyHostLayout,
+    applyHostStyles: applyHostStyles,
     getMessageLog: function () {
       return messageLog.slice()
     },
     isReady: checkReady,
+    getConnectionState: function () {
+      return connectionState
+    },
+    // Bench-side view of the handshake: protocol version vs. bench reference
+    // and whether legacy appInfo aliases were used. Kept separate from
+    // getHostInfo() so that object only ever contains what the host sent.
+    getCompatibility: function () {
+      return currentCompatibility
+    },
 
     // Loading state
     setReady: setReady,
