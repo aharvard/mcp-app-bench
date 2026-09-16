@@ -16,6 +16,10 @@ export function loadAppHtml(appName: string): string {
   // Replace placeholders with actual values
   html = html.replace(/\{\{BASE_URL\}\}/g, BASE_URL)
   html = html.replace(/\{\{CACHE_HASH\}\}/g, CACHE_HASH)
+  // Self-contained CSP fixtures must not depend on an externally loaded shell.
+  html = html.replace(/\{\{SHELL_INLINE\}\}/g, () =>
+    readFileSync(join(staticDir, "shell", "shell.js"), "utf-8")
+  )
 
   return html
 }

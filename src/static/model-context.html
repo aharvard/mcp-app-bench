@@ -303,7 +303,7 @@
           const time = MCPAppShell.getTimestamp();
           const icon = status === 'success' ? '↑' : '✗';
           const indicatorClass = status === 'success' ? 'is-success' : 'is-error';
-          const label = status === 'success' ? 'update-model-context' : 'error';
+          const label = status === 'success' ? 'acknowledged — next-turn delivery unverified' : status;
 
           entry.innerHTML =
             '<span class="update-entry-time">' + time + '</span>' +
@@ -319,9 +319,13 @@
         }
 
         function sendModelContext(params) {
+          if (!MCPAppShell.getHostInfo()?.hostCapabilities?.updateModelContext) {
+            addHistoryEntry('unsupported', {note: 'Optional updateModelContext capability absent. Use inspect-audit-stable for explicit negative probes and next-turn token checks.'});
+            return;
+          }
           MCPAppShell.sendRequest('ui/update-model-context', params)
-            .then(function () {
-              addHistoryEntry('success', params);
+            .then(function (result) {
+              addHistoryEntry(result && result.isError ? 'tool-error' : 'success', params);
             })
             .catch(function (error) {
               addHistoryEntry('error', { error: error.message || error, params: params });

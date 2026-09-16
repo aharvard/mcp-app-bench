@@ -190,24 +190,18 @@ export interface UIResource {
 /**
  * Content returned from resources/read for UI resources.
  */
-export interface UIResourceContent {
+export type UIResourceContent = {
   /** Matching UI resource URI */
   uri: `ui://${string}`
 
   /** MUST be "text/html;profile=mcp-app" */
   mimeType: typeof MCP_APPS_MIME_TYPE
 
-  /** HTML content as string */
-  text?: string
-
-  /** OR base64-encoded HTML */
-  blob?: string
-
   /** Resource metadata */
   _meta?: {
     ui?: UIResourceMeta
   }
-}
+} & ({ text: string } | { blob: string })
 
 /**
  * Response from resources/read for UI resources.
@@ -248,8 +242,13 @@ export interface McpUiToolMeta {
  */
 export interface UITool {
   name: string
-  description: string
-  inputSchema: object
+  description?: string
+  inputSchema: {
+    type: "object"
+    properties?: Record<string, unknown>
+    required?: string[]
+    [key: string]: unknown
+  }
   outputSchema?: object
   _meta?: {
     ui?: McpUiToolMeta
@@ -404,7 +403,7 @@ export type McpUiStyleVariableKey =
  */
 export interface HostStyles {
   /** CSS variables for theming */
-  variables?: Record<McpUiStyleVariableKey, string | undefined>
+  variables?: Partial<Record<McpUiStyleVariableKey, string | undefined>>
   /** CSS blocks that Views can inject */
   css?: {
     /** CSS for font loading (@font-face rules or @import statements) */
@@ -526,6 +525,9 @@ export interface HostContext {
  * They describe the features and capabilities that the Host supports.
  */
 export interface HostCapabilities {
+  /** Content modality support. Absence means unsupported/unknown, not failure. */
+  message?: SupportedContentBlockModalities
+  updateModelContext?: SupportedContentBlockModalities
   /** Experimental features (structure TBD) */
   experimental?: Record<string, unknown>
 
@@ -633,14 +635,15 @@ export interface JsonRpcNotification<
  */
 export interface UiInitializeParams {
   /** App capabilities */
-  appCapabilities?: McpUiAppCapabilities
+  appCapabilities: McpUiAppCapabilities
   /** Client info */
-  clientInfo?: {
+  appInfo: {
     name: string
     version: string
+    title?: string
   }
   /** Protocol version */
-  protocolVersion?: string
+  protocolVersion: string
 }
 
 /**
@@ -648,12 +651,12 @@ export interface UiInitializeParams {
  */
 export interface McpUiInitializeResult {
   protocolVersion: string
-  hostCapabilities?: HostCapabilities
-  hostInfo?: {
+  hostCapabilities: HostCapabilities
+  hostInfo: {
     name: string
     version: string
   }
-  hostContext?: HostContext
+  hostContext: HostContext
 }
 
 // =============================================================================
@@ -673,10 +676,12 @@ export interface UiOpenLinkParams {
  */
 export interface UiMessageParams {
   role: "user"
-  content: {
-    type: "text"
-    text: string
-  }
+  content: ContentBlock[]
+}
+
+export interface UiMessageResult {
+  /** Application-level failure is distinct from a JSON-RPC error response. */
+  isError?: boolean
 }
 
 /**
@@ -698,10 +703,51 @@ export interface UiRequestDisplayModeResult {
 /**
  * Content block for ui/update-model-context.
  */
-export interface ContentBlock {
-  type: string
-  text?: string
-  [key: string]: unknown
+export type ContentBlock = (
+  | { type: "text"; text: string }
+  | { type: "image" | "audio"; data: string; mimeType: string }
+  | {
+      type: "resource_link"
+      uri: string
+      name: string
+      mimeType?: string
+      description?: string
+      size?: number
+    }
+  | {
+      type: "resource"
+      resource: {
+        uri: string
+        mimeType?: string
+        _meta?: Record<string, unknown>
+      } & ({ text: string } | { blob: string })
+    }
+) & {
+  _meta?: Record<string, unknown>
+  annotations?: {
+    audience?: ("user" | "assistant")[]
+    priority?: number
+    lastModified?: string
+  }
+}
+
+export interface SupportedContentBlockModalities {
+  text?: Record<string, never>
+  image?: Record<string, never>
+  audio?: Record<string, never>
+  resource?: Record<string, never>
+  resourceLink?: Record<string, never>
+  structuredContent?: Record<string, never>
+}
+
+/** Draft-only additions, pinned to ext-apps 6d9bdc7; not a wire version string. */
+export interface DraftHostCapabilities extends HostCapabilities {
+  downloadFile?: Record<string, never>
+  sampling?: { tools?: Record<string, never> }
+}
+
+export interface UiDownloadFileParams {
+  contents: Extract<ContentBlock, { type: "resource" | "resource_link" }>[]
 }
 
 /**
@@ -749,7 +795,7 @@ export interface UiToolInputPartialParams {
  * (if View is displayed during tool execution).
  */
 export interface UiToolResultParams {
-  content?: ContentBlock[]
+  content: ContentBlock[]
   structuredContent?: Record<string, unknown>
   _meta?: Record<string, unknown>
   isError?: boolean
@@ -776,9 +822,9 @@ export interface UiResourceTeardownParams {
  */
 export interface UiSizeChangedParams {
   /** Viewport width in pixels */
-  width: number
+  width?: number
   /** Viewport height in pixels */
-  height: number
+  height?: number
 }
 
 /**

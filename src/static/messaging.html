@@ -16,6 +16,8 @@
     <!-- Main Content (hidden until ready) -->
     <div id="app-content" class="app-content">
       <h1>Messaging Inspector</h1>
+      <p id="probe-status" aria-live="polite">Requests and responses appear below. Acknowledgement does not prove host rendering or model delivery.</p>
+      <label><input id="negative-probe" type="checkbox"> Explicit negative probe: send even without advertised capability</label>
       <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
       
       <div class="terminal">
@@ -185,7 +187,8 @@
           MCPAppShell.sendRequest('resources/read', {
             uri: 'resource://example/demo-resource'
           }).then(function (result) {
-            console.log('[Messaging] resources/read response:', result);
+            const matched = result && Array.isArray(result.contents) && result.contents.some(c => c.uri === 'resource://example/demo-resource' && c.mimeType === 'text/plain' && c.text === 'MCP App Bench resource fixture v1');
+            document.getElementById('probe-status').textContent = matched ? 'PASS: deterministic resource content matched.' : 'FAIL: resource response did not match the fixture.';
           }).catch(function (error) {
             console.error('[Messaging] resources/read error:', error);
           });
@@ -193,15 +196,17 @@
 
         // UI → Server: Log Message
         document.getElementById('btn-notifications-message').addEventListener('click', function () {
-          MCPAppShell.sendRequest('notifications/message', {
+          const capabilities = MCPAppShell.getHostInfo().hostCapabilities;
+          if (!capabilities.logging && !document.getElementById('negative-probe').checked) {
+            document.getElementById('probe-status').textContent = 'Logging unsupported (optional capability). No notification sent.';
+            return;
+          }
+          MCPAppShell.sendNotification('notifications/message', {
             level: 'info',
             data: 'This is a log message from the Messaging Inspector!',
             logger: 'Messaging Inspector'
-          }).then(function (result) {
-            console.log('[Messaging] notifications/message response:', result);
-          }).catch(function (error) {
-            console.error('[Messaging] notifications/message error:', error);
           });
+          document.getElementById('probe-status').textContent = 'Logging notification sent with no request ID; host receipt is not observable.';
         });
 
         // UI → Server: Ping

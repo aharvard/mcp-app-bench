@@ -62,6 +62,8 @@
           });
           html += '</div>';
 
+          html += '<h2>Ordered lifecycle events</h2>' +
+            MCPAppShell.renderJsonValue(MCPAppShell.getLifecycleEvents(), 0, 3);
           container.innerHTML = html;
 
           // Setup hover effects
@@ -77,7 +79,7 @@
           clientName: 'Tool Data Inspector',
           clientVersion: '1.0.0',
           onInitialized: function (result) {
-            // Content will render when tool-result is received
+            renderToolData();
           }
         });
 
