@@ -375,7 +375,16 @@
     return "dark"
   }
 
+  // Applies the body class the layout CSS keys off. Only recognized modes are
+  // applied: the value comes straight from the host, and an arbitrary string
+  // would either throw in classList.add (whitespace) or silently strip every
+  // layout class. Unrecognized modes are left to the grading schema to report.
+  // Returns true when the class was applied.
   function setDisplayMode(mode) {
+    if (mode && RECOGNIZED_DISPLAY_MODES.indexOf(mode) === -1) {
+      console.warn("[MCP Shell] Ignoring unrecognized display mode:", mode)
+      return false
+    }
     document.body.classList.remove.apply(
       document.body.classList,
       RECOGNIZED_DISPLAY_MODES.map(function (name) {
@@ -387,6 +396,20 @@
     }
     // Allow scrolling in the non-inline modes by overriding html overflow
     document.documentElement.style.overflow = "auto"
+    return true
+  }
+
+  // A host may grant ui/request-display-mode without also sending
+  // host-context-changed, so the response is the third path (after the
+  // initialize result and the notification) on which the shell owns the body
+  // class and the recorded host context. Keeping it here means every fixture
+  // that requests a mode gets the same behavior.
+  function applyGrantedDisplayMode(result) {
+    if (!isObject(result) || typeof result.mode !== "string") return
+    if (currentHostInfo && currentHostInfo.hostContext) {
+      currentHostInfo.hostContext.displayMode = result.mode
+    }
+    setDisplayMode(result.mode)
   }
 
   // ==========================================================================
@@ -1463,7 +1486,11 @@
           payload
         )
         if (isError) pending.reject(payload)
-        else pending.resolve(payload)
+        else {
+          if (pending.method === "ui/request-display-mode")
+            applyGrantedDisplayMode(payload)
+          pending.resolve(payload)
+        }
         return
       }
       // A reply that arrived after the local timeout, or one we never asked
