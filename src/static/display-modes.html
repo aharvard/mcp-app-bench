@@ -34,7 +34,7 @@
               </div>
               <div class="dm-state-row">
                 <span class="dm-state-label">App Declared Modes</span>
-                <span class="dm-state-value" id="dm-app-modes">inline, fullscreen, pip</span>
+                <span class="dm-state-value" id="dm-app-modes">inline, fullscreen, pip, split-right, split-bottom, standalone</span>
               </div>
             </div>
           </div>
@@ -62,7 +62,29 @@
                 <span class="dm-mode-btn-label">pip</span>
                 <span class="dm-mode-btn-desc">Picture-in-picture overlay</span>
               </button>
+              <button class="dm-mode-btn" data-mode="split-right" id="btn-mode-split-right">
+                <span class="dm-mode-btn-icon">◨</span>
+                <span class="dm-mode-btn-label">split-right</span>
+                <span class="dm-mode-btn-desc">Docked beside the conversation</span>
+              </button>
+              <button class="dm-mode-btn" data-mode="split-bottom" id="btn-mode-split-bottom">
+                <span class="dm-mode-btn-icon">⬓</span>
+                <span class="dm-mode-btn-label">split-bottom</span>
+                <span class="dm-mode-btn-desc">Docked below the conversation</span>
+              </button>
+              <button class="dm-mode-btn" data-mode="standalone" id="btn-mode-standalone">
+                <span class="dm-mode-btn-icon">⧉</span>
+                <span class="dm-mode-btn-label">standalone</span>
+                <span class="dm-mode-btn-desc">Detached in its own window</span>
+              </button>
             </div>
+            <p class="dm-description">
+              <code>split-right</code>, <code>split-bottom</code> and
+              <code>standalone</code> are bench extensions: they are not in the
+              pinned <code>McpUiDisplayMode</code> enum, so a host that does not
+              offer them is conformant. This fixture declares them deliberately;
+              other fixtures keep their spec-only declarations.
+            </p>
           </div>
 
           <!-- Event Log Section -->
@@ -80,10 +102,12 @@
     <script src="{{BASE_URL}}/shell/shell.js?v={{CACHE_HASH}}"></script>
     <script>
       (function () {
-        var ALL_MODES = ['inline', 'fullscreen', 'pip'];
+        var ALL_MODES = MCPAppShell.RECOGNIZED_DISPLAY_MODES;
         var currentMode = null;
         var hostAvailableModes = null;
-        var appDeclaredModes = ['inline', 'fullscreen', 'pip'];
+        // The all-modes fixture: opts into the bench extension modes on top of
+        // the spec ones, so hosts that offer them can be exercised here.
+        var appDeclaredModes = MCPAppShell.RECOGNIZED_DISPLAY_MODES;
         var logEntries = [];
 
         // ====================================================================
@@ -227,6 +251,10 @@
             }
             if (actualMode) {
               currentMode = actualMode;
+              // The response is authoritative: a host may grant a mode without
+              // also sending host-context-changed, which is the only path the
+              // shell applies the body class on.
+              MCPAppShell.setDisplayMode(actualMode);
               if (actualMode === mode) {
                 addLogEntry('response', actualMode, 'Mode set successfully');
               } else {

@@ -19,6 +19,8 @@ const upstreamSchema = JSON.parse(
 )
 const ajv = new Ajv2020({ strict: false, allErrors: true })
 addFormats(ajv)
+const json = (value) => JSON.parse(JSON.stringify(value))
+
 function validateWire(name, value) {
   const validate = ajv.compile(upstreamSchema.$defs[name])
   assert.ok(validate(value), JSON.stringify(validate.errors))
@@ -747,6 +749,68 @@ test("emitted initialize, content arrays and height-only size match pinned upstr
       params: { role: "user", content: { type: "text", text: "wrong" } },
     }),
     false
+  )
+})
+
+test("extension display modes are recognized without leaking into the default declaration", async () => {
+  const h = createHarness()
+  await initialize(h)
+  const init = h.messages.find((m) => m.method === "ui/initialize")
+
+  // The default handshake stays inside the pinned upstream enum, so apps that
+  // never opt in keep validating against the vendored oracle.
+  assert.deepEqual(json(init.params.appCapabilities.availableDisplayModes), [
+    "inline",
+    "fullscreen",
+    "pip",
+  ])
+  validateWire("McpUiInitializeRequest", {
+    method: init.method,
+    params: init.params,
+  })
+
+  // Opting in is deliberate, and such a handshake is knowingly off-spec.
+  const optedIn = createHarness()
+  optedIn.shell.initialize({
+    availableDisplayModes: optedIn.shell.RECOGNIZED_DISPLAY_MODES,
+  })
+  const optedInInit = optedIn.messages.at(-1)
+  assert.deepEqual(
+    json(optedInInit.params.appCapabilities.availableDisplayModes),
+    ["inline", "fullscreen", "pip", "split-right", "split-bottom", "standalone"]
+  )
+  const validate = ajv.compile(upstreamSchema.$defs.McpUiInitializeRequest)
+  assert.equal(
+    validate({
+      method: optedInInit.method,
+      params: optedInInit.params,
+    }),
+    false
+  )
+
+  // A host offering an extension mode grades as conformant, not off-spec.
+  const cases = h.shell.generateTestCases(h.shell.hostContextSchema)
+  const check = (context, path) =>
+    h.shell.runTestCase(
+      cases.find((t) => t.path === path),
+      { hostContext: context }
+    ).status
+  for (const mode of h.shell.EXTENSION_DISPLAY_MODES) {
+    assert.equal(
+      check({ displayMode: mode }, "hostContext.displayMode"),
+      "provided"
+    )
+    assert.equal(
+      check(
+        { availableDisplayModes: [mode] },
+        "hostContext.availableDisplayModes"
+      ),
+      "provided"
+    )
+  }
+  assert.equal(
+    check({ displayMode: "modal" }, "hostContext.displayMode"),
+    "invalid"
   )
 })
 

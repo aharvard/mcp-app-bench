@@ -209,11 +209,66 @@ body.display-mode-pip {
   overflow-y: auto;
 }
 
+/* Standalone: the view owns the whole window, so it behaves like fullscreen
+   but keeps its own page scroll rather than pinning to the viewport. */
+body.display-mode-standalone {
+  min-height: 100vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* Split panes: the host gives us a persistent side or bottom dock. Narrow and
+   short respectively, so both scroll internally and drop to a single column. */
+body.display-mode-split-right,
+body.display-mode-split-bottom {
+  height: 100vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+body.display-mode-split-right .terminal-grid,
+body.display-mode-split-bottom .terminal-grid {
+  grid-template-columns: 1fr;
+}
+
+/* Right dock is the narrowest surface: trim horizontal padding. */
+body.display-mode-split-right {
+  padding: 12px 12px 0;
+}
+
+body.display-mode-split-right .terminal {
+  margin-left: -12px;
+  margin-right: -12px;
+}
+
 /* Compact layout adjustments for non-inline modes */
 body.display-mode-fullscreen h1,
+body.display-mode-standalone h1,
 body.display-mode-pip h1 {
   font-size: min(max(2.5rem, 6vw), 5rem);
   margin: 0.5rem auto;
+}
+
+/* Right dock is narrow, so scale the title with the available width. */
+body.display-mode-split-right h1 {
+  font-size: min(max(1.75rem, 5vw), 3rem);
+  margin: 0.5rem auto;
+}
+
+/* Bottom dock is wide but short: width-relative sizing would eat the pane, so
+   keep the header small and give the content the vertical space instead. */
+body.display-mode-split-bottom h1 {
+  font-size: 1.5rem;
+  margin: 0.25rem auto;
+}
+
+body.display-mode-split-bottom {
+  padding-top: 8px;
+}
+
+body.display-mode-split-right .host-info-subtitle,
+body.display-mode-split-bottom .host-info-subtitle {
+  font-size: 0.75rem;
 }
 
 body.display-mode-pip {

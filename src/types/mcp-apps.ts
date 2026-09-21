@@ -415,8 +415,26 @@ export interface HostStyles {
 // Host Context Types
 // =============================================================================
 
+/**
+ * Display modes defined by the pinned MCP Apps schema.
+ *
+ * These are the only modes an app may declare if it needs to stay valid
+ * against the vendored upstream oracle in `test/fixtures/ext-apps-schema.json`.
+ */
+export type SpecDisplayMode = "inline" | "fullscreen" | "pip"
+
+/**
+ * Display modes the bench recognizes beyond the pinned schema.
+ *
+ * Hosts are free to offer these, and fixtures may opt into declaring them, but
+ * they are not part of upstream `McpUiDisplayMode` as of the pinned revision.
+ * The shell's default `availableDisplayModes` deliberately excludes them so
+ * that apps which do not opt in keep emitting spec-valid handshakes.
+ */
+export type ExtensionDisplayMode = "split-right" | "split-bottom" | "standalone"
+
 /** Display mode for the UI */
-export type DisplayMode = "inline" | "fullscreen" | "pip"
+export type DisplayMode = SpecDisplayMode | ExtensionDisplayMode
 
 /** Platform type for responsive design */
 export type Platform = "web" | "desktop" | "mobile"

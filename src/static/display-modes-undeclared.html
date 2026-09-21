@@ -231,6 +231,10 @@
             }
             if (actualMode) {
               currentMode = actualMode;
+              // The response is authoritative: a host may grant a mode without
+              // also sending host-context-changed, which is the only path the
+              // shell applies the body class on.
+              MCPAppShell.setDisplayMode(actualMode);
               if (actualMode === mode) {
                 addLogEntry('response', actualMode, 'Mode set successfully');
               } else {
