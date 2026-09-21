@@ -814,6 +814,72 @@ test("extension display modes are recognized without leaking into the default de
   )
 })
 
+test("setDisplayMode swaps recognized classes and ignores unrecognized modes", async () => {
+  const h = createHarness()
+  const has = (mode) => h.document.body.classList.contains("display-mode-" + mode)
+
+  assert.equal(h.shell.setDisplayMode("standalone"), true)
+  assert.ok(has("standalone"))
+  assert.equal(h.shell.setDisplayMode("inline"), true)
+  assert.ok(has("inline"))
+  assert.ok(!has("standalone"), "leaving a mode must drop its class")
+
+  // Host-supplied strings must never throw in classList.add or strip the
+  // current layout; the grading schema reports them instead.
+  for (const bad of ["modal", "full screen", "display-mode-pip"]) {
+    assert.equal(h.shell.setDisplayMode(bad), false)
+  }
+  assert.ok(has("inline"), "an unrecognized mode leaves the current class")
+  assert.ok(!has("modal"))
+
+  // An empty mode is the explicit "no mode" reset.
+  assert.equal(h.shell.setDisplayMode(""), true)
+  assert.ok(!has("inline"))
+})
+
+test("a granted ui/request-display-mode response applies the body class and updates host context", async () => {
+  const h = createHarness()
+  await initialize(
+    h,
+    validInitializeResult({
+      hostContext: {
+        displayMode: "inline",
+        availableDisplayModes: h.shell.RECOGNIZED_DISPLAY_MODES,
+      },
+    })
+  )
+  const has = (mode) => h.document.body.classList.contains("display-mode-" + mode)
+  assert.ok(has("inline"))
+
+  const granted = h.shell.sendRequest("ui/request-display-mode", {
+    mode: "split-bottom",
+  })
+  const request = h.messages.at(-1)
+  h.dispatch({ jsonrpc: "2.0", id: request.id, result: { mode: "split-bottom" } })
+  assert.deepEqual(await granted, { mode: "split-bottom" })
+  assert.ok(has("split-bottom"))
+  assert.ok(!has("inline"))
+  assert.equal(h.shell.getHostInfo().hostContext.displayMode, "split-bottom")
+
+  // A host answering with a mode the bench does not recognize is recorded for
+  // grading but must not throw or disturb the applied layout.
+  const odd = h.shell.sendRequest("ui/request-display-mode", { mode: "pip" })
+  h.dispatch({
+    jsonrpc: "2.0",
+    id: h.messages.at(-1).id,
+    result: { mode: "full screen" },
+  })
+  assert.deepEqual(await odd, { mode: "full screen" })
+  assert.ok(has("split-bottom"))
+  assert.equal(h.shell.getHostInfo().hostContext.displayMode, "full screen")
+
+  // Shapes without a string mode are passed through untouched.
+  const declined = h.shell.sendRequest("ui/request-display-mode", { mode: "pip" })
+  h.dispatch({ jsonrpc: "2.0", id: h.messages.at(-1).id, result: {} })
+  assert.deepEqual(await declined, {})
+  assert.ok(has("split-bottom"))
+})
+
 test("malformed style records stay inspectable instead of throwing during CSS injection", async () => {
   const h = createHarness()
   const variables = { "--font-sans": { toString: 0 } }

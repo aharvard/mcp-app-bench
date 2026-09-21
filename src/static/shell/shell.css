@@ -218,17 +218,12 @@ body.display-mode-standalone {
 }
 
 /* Split panes: the host gives us a persistent side or bottom dock. Narrow and
-   short respectively, so both scroll internally and drop to a single column. */
+   short respectively, so both pin to the pane and scroll internally. */
 body.display-mode-split-right,
 body.display-mode-split-bottom {
   height: 100vh;
   box-sizing: border-box;
   overflow-y: auto;
-}
-
-body.display-mode-split-right .terminal-grid,
-body.display-mode-split-bottom .terminal-grid {
-  grid-template-columns: 1fr;
 }
 
 /* Right dock is the narrowest surface: trim horizontal padding. */

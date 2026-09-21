@@ -330,6 +330,15 @@ test("extension display modes are requestable only when the host offers them", a
     .toBe("split-right")
   await expect(frame.locator("#dm-current-mode")).toHaveText("split-right")
   await expect(frame.locator("body")).toHaveClass(/display-mode-split-right/)
+
+  // Moving to another granted mode swaps the class rather than stacking it.
+  await page.evaluate(
+    () => (responses["ui/request-display-mode"] = { mode: "standalone" })
+  )
+  await frame.locator("#btn-mode-standalone").click()
+  await expect(frame.locator("#dm-current-mode")).toHaveText("standalone")
+  await expect(frame.locator("body")).toHaveClass(/display-mode-standalone/)
+  await expect(frame.locator("body")).not.toHaveClass(/display-mode-split-right/)
 })
 for (const policy of ["declared", "omitted"])
   test("real CSP and DOM isolation: " + policy, async ({ page }) => {
