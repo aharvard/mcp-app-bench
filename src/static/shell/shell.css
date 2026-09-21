@@ -204,9 +204,15 @@ body.display-mode-fullscreen
   overflow-y: auto;
 }
 
-/* PiP: allow vertical scrolling for overflow content */
-body.display-mode-pip {
-  overflow-y: auto;
+/* PiP: the host gives us a small floating window, so the page itself is the
+   scroller (html has overflow: auto). Let the fixed-height logs grow to their
+   natural height so there is exactly one scrollbar; a nested scroller inside
+   a window this small just traps the wheel and doubles the scrollbars. */
+body.display-mode-pip .dm-log,
+body.display-mode-pip .message-log {
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
 }
 
 /* Standalone: the view owns the whole window, so it behaves like fullscreen
@@ -268,6 +274,21 @@ body.display-mode-split-bottom .host-info-subtitle {
 
 body.display-mode-pip {
   padding: 16px 16px 0;
+  /* Fill the pip window when the content is shorter than it. */
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Continue the terminal's background to the bottom of the window when the
+   content is shorter than it. A filler, not a stretched .app-content: size
+   reporting measures .app-content, and stretching it would ratchet the report. */
+body.display-mode-pip:has(.app-content.is-ready)::after {
+  content: "";
+  flex: 1;
+  margin: 0 -16px;
+  background: var(--bg-terminal);
 }
 
 body.display-mode-pip h1 {

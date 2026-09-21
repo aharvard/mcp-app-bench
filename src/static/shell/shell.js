@@ -78,15 +78,24 @@
     const dims = isObject(context.containerDimensions)
       ? context.containerDimensions
       : {}
+    // In pip the host's floating window is the scroller. The document sizes to
+    // the iframe and its natural height, reports that via size-changed so the
+    // iframe grows to fit, and never shows scrollbars of its own. Honoring the
+    // host's fixed dimensions would pin html to a window that already scrolls
+    // (and its scrollbar gutter makes the reported width overflow the iframe,
+    // which then trades horizontal and vertical bars back and forth).
+    const windowScrolls = context.displayMode === "pip"
     for (const axis of ["height", "width"]) {
       const maxAxis = "max" + axis[0].toUpperCase() + axis.slice(1)
-      const fixed = Number.isFinite(dims[axis]) && dims[axis] >= 0
-      const maximum = Number.isFinite(dims[maxAxis]) && dims[maxAxis] >= 0
+      const fixed =
+        !windowScrolls && Number.isFinite(dims[axis]) && dims[axis] >= 0
+      const maximum =
+        !windowScrolls && Number.isFinite(dims[maxAxis]) && dims[maxAxis] >= 0
       document.documentElement.style[axis] = fixed ? dims[axis] + "px" : ""
       document.documentElement.style[maxAxis] =
         !fixed && maximum ? dims[maxAxis] + "px" : ""
     }
-    document.documentElement.style.overflow = "auto"
+    document.documentElement.style.overflow = windowScrolls ? "hidden" : "auto"
   }
 
   function applyHostStyles(styles) {
@@ -102,6 +111,24 @@
     }
   }
 
+  // In pip the host sizes the iframe from the height we report, so content
+  // shorter than the window would leave the window's own background showing
+  // below us. Report at least the window height the host gave us; body's
+  // min-height: 100vh (shell.css) then fills the iframe. The floor is the
+  // host's number, not our layout, so it cannot feed back into the report.
+  function getReportedHeightFloor() {
+    const context = currentHostInfo && currentHostInfo.hostContext
+    if (!context || context.displayMode !== "pip") return 0
+    const dims = isObject(context.containerDimensions)
+      ? context.containerDimensions
+      : {}
+    for (const key of ["height", "maxHeight"]) {
+      if (Number.isFinite(dims[key]) && dims[key] > 0)
+        return Math.ceil(dims[key])
+    }
+    return 0
+  }
+
   function getMeasuredContentHeight() {
     const bodyRect = document.body.getBoundingClientRect()
     const readyContent = document.querySelector(".app-content.is-ready")
@@ -110,13 +137,15 @@
       readyContent && readyContent instanceof HTMLElement
         ? readyContent
         : loadingContent
+    const floor = getReportedHeightFloor()
 
     if (activeRoot && activeRoot instanceof HTMLElement) {
       const rootRect = activeRoot.getBoundingClientRect()
-      return Math.max(0, Math.ceil(rootRect.bottom - bodyRect.top))
+      return Math.max(floor, Math.ceil(rootRect.bottom - bodyRect.top))
     }
 
     return Math.max(
+      floor,
       Math.ceil(document.body.getBoundingClientRect().height),
       Math.ceil(document.body.scrollHeight)
     )
@@ -394,8 +423,9 @@
     if (mode) {
       document.body.classList.add("display-mode-" + mode)
     }
-    // Allow scrolling in the non-inline modes by overriding html overflow
-    document.documentElement.style.overflow = "auto"
+    // Allow scrolling in the non-inline modes by overriding html overflow.
+    // Pip is the exception: the host window scrolls, so the guest must not.
+    document.documentElement.style.overflow = mode === "pip" ? "hidden" : "auto"
     return true
   }
 
@@ -410,6 +440,11 @@
       currentHostInfo.hostContext.displayMode = result.mode
     }
     setDisplayMode(result.mode)
+    // The layout depends on the mode (pip ignores the fixed dimensions), so
+    // re-apply it against the dimensions we already hold.
+    if (currentHostInfo && currentHostInfo.hostContext) {
+      applyHostLayout(currentHostInfo.hostContext)
+    }
   }
 
   // ==========================================================================

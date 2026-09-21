@@ -289,22 +289,6 @@
           }
         });
 
-        var negative = document.createElement('button');
-        negative.className = 'action-btn';
-        negative.textContent = 'Negative probe: request unsupported mode';
-        negative.onclick = async function () {
-          var mode = ALL_MODES.find(function (m) { return !Array.isArray(hostAvailableModes) || !hostAvailableModes.includes(m) || (Array.isArray(appDeclaredModes) && !appDeclaredModes.includes(m)); });
-          if (!mode) { addLogEntry('info', '', 'No unsupported mode in this fixture'); return; }
-          try {
-            var result = await MCPAppShell.sendRequest('ui/request-display-mode', {mode: mode});
-            if (!result || !ALL_MODES.includes(result.mode) || !Array.isArray(hostAvailableModes) || !hostAvailableModes.includes(result.mode) || (Array.isArray(appDeclaredModes) && !appDeclaredModes.includes(result.mode))) {
-              addLogEntry('error', mode, 'Negative probe returned a missing or unsupported mode: ' + JSON.stringify(result));
-              return;
-            }
-            addLogEntry('response', mode, JSON.stringify(result) + ' — returned mode must stay in supported intersection; declining is valid');
-          } catch (error) { addLogEntry('response', mode, 'Rejected negative probe: ' + error.message); }
-        };
-        document.getElementById('app-content').appendChild(negative);
         // Button click handlers
         ALL_MODES.forEach(function (mode) {
           var btn = document.getElementById('btn-mode-' + mode);
