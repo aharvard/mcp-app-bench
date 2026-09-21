@@ -10,6 +10,14 @@ The bench measures observable behavior. It does not certify a host from a succes
 
 The app requests MCP **Apps** version `2026-01-26`. The server's core MCP transport version is independent. `draft@6d9bdc7` is a bench profile label, never a negotiated version string. A host returning another nonempty Apps version can still be inspected; the UI labels its results a reference comparison, not conformance with that other version. Legacy aliases are compatibility observations, not canonical fields.
 
+### Bench extension display modes
+
+`split-right`, `split-bottom` and `standalone` are **bench extensions**, not spec modes. The pinned `McpUiDisplayMode` enum contains only `inline`, `fullscreen` and `pip`. The bench recognizes the extension modes so a host that offers them can be exercised and graded, but:
+
+- A host that offers none of them is fully conformant. Never score their absence.
+- The shell's default `availableDisplayModes` stays spec-only, so any app that does not opt in keeps emitting a handshake that validates against the vendored oracle.
+- Declaring them is per-fixture and deliberate. Only `inspect-display-modes` opts in; that fixture's `ui/initialize` is knowingly off-spec and must not be used as a wire-conformance sample.
+
 The pinned prose and generated schema disagree in places. The shell uses `ui/initialize`, required `appInfo` and `appCapabilities`, array `ui/message.content`, and optional width/height in size notifications. The schema requires `hostContext` in the initialization result, while prose says hosts SHOULD include it. The bench tolerates omitted/null sections to remain inspectable; that normalization is not proof of schema conformance. Dimensions may omit either axis independently. Unknown protocol versions and missing optional features must not inflate a pass/fail score.
 
 ## Run locally
@@ -71,7 +79,7 @@ The explicit negative-probe checkbox intentionally bypasses capability gates. Le
 1. Open `inspect-host-info`. It should render as soon as initialization completes, without waiting for the tool result. Check the host-reported version and bench reference separately.
 2. Open `inspect-tool-data`. With a host harness, send partial input, complete input, then result. Repeat with cancellation instead of result. Expect ordered evidence and the cancellation reason. Send result without input and confirm it is flagged.
 3. Open `inspect-messaging`. Read the deterministic resource; expect an exact-match result. Send a log notification and check host logs. No pending request or timeout should be created for logging.
-4. Open `inspect-display-modes-inline-only`, then `inspect-display-modes-undeclared`. Their app declarations must differ. Unsupported normal buttons must be disabled, including keyboard activation. Use the separate negative control only deliberately. A return of the current supported mode is a valid decline.
+4. Open `inspect-display-modes-inline-only`, then `inspect-display-modes-undeclared`. Their app declarations must differ. Unsupported normal buttons must be disabled, including keyboard activation. Use the separate negative control only deliberately. A return of the current supported mode is a valid decline. Then open `inspect-display-modes`, which additionally declares the bench extension modes: on a host that offers none of them, `split-right`, `split-bottom` and `standalone` must be disabled and that is a pass, not a finding.
 5. Resize the host pane and change dimension constraints. You should still reach lower controls. In `inspect-host-styles`, supply fonts-only CSS, replace it, then remove it. Inspect font loading separately from the presence of the style element.
 6. Put `inspect-transparency` over a known patterned host background. Toggle host and OS light/dark settings separately. The host background must remain visible to establish compositing; local alpha is insufficient.
 

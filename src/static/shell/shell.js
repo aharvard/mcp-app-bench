@@ -10,6 +10,17 @@
   // State
   // ==========================================================================
 
+  // Display modes in the pinned upstream schema. Apps that declare only these
+  // keep emitting handshakes that validate against the vendored oracle.
+  const SPEC_DISPLAY_MODES = ["inline", "fullscreen", "pip"]
+  // Modes the bench understands but upstream has not standardized. Hosts may
+  // offer them and fixtures may opt into declaring them; the default
+  // declaration below stays spec-only so opting in is always deliberate.
+  const EXTENSION_DISPLAY_MODES = ["split-right", "split-bottom", "standalone"]
+  const RECOGNIZED_DISPLAY_MODES = SPEC_DISPLAY_MODES.concat(
+    EXTENSION_DISPLAY_MODES
+  )
+
   let requestId = 1
   const pendingRequests = new Map()
   // Requests that timed out locally, kept so a late host reply can still be
@@ -273,13 +284,13 @@
         },
         displayMode: {
           type: "string",
-          enum: ["inline", "fullscreen", "pip"],
+          enum: RECOGNIZED_DISPLAY_MODES,
           optional: true,
         },
         availableDisplayModes: {
           type: "array",
           optional: true,
-          items: { type: "string", enum: ["inline", "fullscreen", "pip"] },
+          items: { type: "string", enum: RECOGNIZED_DISPLAY_MODES },
         },
         // Each axis independently permits fixed, maximum, or omitted (unbounded).
         containerDimensions: {
@@ -365,15 +376,16 @@
   }
 
   function setDisplayMode(mode) {
-    document.body.classList.remove(
-      "display-mode-inline",
-      "display-mode-fullscreen",
-      "display-mode-pip"
+    document.body.classList.remove.apply(
+      document.body.classList,
+      RECOGNIZED_DISPLAY_MODES.map(function (name) {
+        return "display-mode-" + name
+      })
     )
     if (mode) {
       document.body.classList.add("display-mode-" + mode)
     }
-    // Allow scrolling in fullscreen/pip by overriding html overflow
+    // Allow scrolling in the non-inline modes by overriding html overflow
     document.documentElement.style.overflow = "auto"
   }
 
@@ -1606,10 +1618,12 @@
     let hostResponded = false
     let normalized
     try {
+      // Defaults to the spec modes only: an app has to ask for the extension
+      // modes by name, so a stock handshake stays valid upstream.
       const availableDisplayModes =
         options.availableDisplayModes === null
           ? null
-          : options.availableDisplayModes || ["inline", "fullscreen", "pip"]
+          : options.availableDisplayModes || SPEC_DISPLAY_MODES.slice()
       const initParams = {
         protocolVersion: MCP_APPS_SPEC_VERSION,
         appInfo: {
@@ -1898,6 +1912,9 @@
 
     // Display Mode
     setDisplayMode: setDisplayMode,
+    SPEC_DISPLAY_MODES: SPEC_DISPLAY_MODES.slice(),
+    EXTENSION_DISPLAY_MODES: EXTENSION_DISPLAY_MODES.slice(),
+    RECOGNIZED_DISPLAY_MODES: RECOGNIZED_DISPLAY_MODES.slice(),
 
     // Utilities
     escapeHtml: escapeHtml,

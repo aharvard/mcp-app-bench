@@ -38,6 +38,7 @@ test.beforeAll(async () => {
           "tool-data",
           "host-info",
           "host-styles",
+          "display-modes",
           "display-modes-inline-fullscreen",
           "security",
           "audit",
@@ -292,6 +293,43 @@ test("normal unsupported display modes cannot be clicked; explicit negative prob
       )
     )
     .toBe(true)
+})
+test("extension display modes are requestable only when the host offers them", async ({
+  page,
+}) => {
+  // A host that offers no extension mode: the buttons exist but stay inert.
+  const specOnly = await open(page, "display-modes", {
+    displayMode: "inline",
+    availableDisplayModes: ["inline", "fullscreen", "pip"],
+  })
+  for (const mode of ["split-right", "split-bottom", "standalone"])
+    await expect(specOnly.locator("#btn-mode-" + mode)).toBeDisabled()
+  await expect(specOnly.locator("#btn-mode-fullscreen")).toBeEnabled()
+
+  // A host that does offer them: the request goes out and the granted mode is
+  // reflected in state and in the body class the CSS keys off.
+  const frame = await open(page, "display-modes", {
+    displayMode: "inline",
+    availableDisplayModes: ["inline", "split-right", "standalone"],
+  })
+  await expect(frame.locator("#btn-mode-split-bottom")).toBeDisabled()
+  await expect(frame.locator("#btn-mode-split-right")).toBeEnabled()
+
+  await page.evaluate(
+    () => (responses["ui/request-display-mode"] = { mode: "split-right" })
+  )
+  await frame.locator("#btn-mode-split-right").click()
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const m = messages.find((m) => m.method === "ui/request-display-mode")
+        return m && m.params.mode
+      })
+    )
+    .toBe("split-right")
+  await expect(frame.locator("#dm-current-mode")).toHaveText("split-right")
+  await expect(frame.locator("body")).toHaveClass(/display-mode-split-right/)
 })
 for (const policy of ["declared", "omitted"])
   test("real CSP and DOM isolation: " + policy, async ({ page }) => {

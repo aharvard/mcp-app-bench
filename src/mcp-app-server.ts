@@ -287,7 +287,7 @@ export function initMcpAppServer(): McpServer {
     {
       title: "Display Modes Inspector",
       description:
-        "Test display mode switching between inline, fullscreen, and pip modes",
+        "Test display mode switching across the spec modes (inline, fullscreen, pip) and the bench extension modes (split-right, split-bottom, standalone)",
       mimeType: MCP_APPS_MIME_TYPE,
     },
     async () => ({
@@ -480,13 +480,13 @@ export function initMcpAppServer(): McpServer {
     }
   )
 
-  // Display Modes inspector tool (all modes: inline, fullscreen, pip)
+  // Display Modes inspector tool (all recognized modes, incl. bench extensions)
   server.registerTool(
     "inspect-display-modes",
     {
       title: "Display Modes Inspector",
       description:
-        "Test display mode switching between inline, fullscreen, and pip modes",
+        "Test display mode switching across the spec modes (inline, fullscreen, pip) and the bench extension modes (split-right, split-bottom, standalone)",
       inputSchema: withFooterInputSchema({}),
       outputSchema: withFooterOutputSchema({}),
       _meta: {
@@ -500,7 +500,7 @@ export function initMcpAppServer(): McpServer {
         content: [
           {
             type: "text",
-            text: `Display Modes Inspector loaded. Declared modes: inline, fullscreen, pip`,
+            text: `Display Modes Inspector loaded. Declared modes: inline, fullscreen, pip, split-right, split-bottom, standalone`,
           },
         ],
         structuredContent: buildFooterStructuredContent(args.joke),

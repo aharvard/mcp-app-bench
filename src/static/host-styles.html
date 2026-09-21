@@ -35,13 +35,17 @@
       }
 
       body.display-mode-fullscreen,
+      body.display-mode-standalone,
+      body.display-mode-split-right,
+      body.display-mode-split-bottom,
       body.display-mode-pip {
         height: auto;
         overflow-y: auto;
         display: block;
       }
 
-      body.display-mode-fullscreen .app-content.is-ready {
+      body.display-mode-fullscreen .app-content.is-ready,
+      body.display-mode-standalone .app-content.is-ready {
         display: block;
       }
 
