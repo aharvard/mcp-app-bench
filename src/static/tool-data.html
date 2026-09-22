@@ -63,7 +63,7 @@
           html += '</div>';
 
           html += '<h2>Ordered lifecycle events</h2>' +
-            MCPAppShell.renderJsonValue(MCPAppShell.getLifecycleEvents(), 0, 3);
+            '<div class="json-viewer">' + MCPAppShell.renderJsonValue(MCPAppShell.getLifecycleEvents(), 0, 3) + '</div>';
           container.innerHTML = html;
 
           // Setup hover effects
