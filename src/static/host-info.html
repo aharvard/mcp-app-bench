@@ -19,7 +19,7 @@
       <p class="host-info-subtitle" id="host-info-subtitle">Connecting...</p>
       
       <div class="terminal">
-        <div class="terminal-grid">
+        <div class="terminal-grid host-info-grid">
           <div class="terminal-section">
             <h2>HostContext Validation</h2>
             <div id="test-runner-content" class="test-runner">
@@ -29,6 +29,14 @@
                   <span>Running tests...</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Live feed of ui/notifications/host-context-changed -->
+          <div class="terminal-section">
+            <h2>Host Context Changes</h2>
+            <div class="hcc-log" id="hcc-log">
+              <div class="message-empty">No host-context-changed notifications yet. Resize the app or switch display mode to see traffic.</div>
             </div>
           </div>
         </div>
@@ -48,13 +56,77 @@
         const expandedGroups = new Set();
         let rawDataExpanded = false;
 
-        function shouldIgnoreHostContextChange(params) {
+        // host-context-changed feed. A PiP resize emits one notification per
+        // frame, so the log is capped and the re-validation is coalesced onto
+        // a single animation frame instead of running once per notification.
+        const MAX_CONTEXT_EVENTS = 25;
+        const contextEvents = [];
+        let contextEventCount = 0;
+        let rerunFrame = null;
+
+        function changedKeyList(params) {
           if (!params || typeof params !== 'object' || Array.isArray(params)) {
-            return false;
+            return [];
+          }
+          return Object.keys(params).sort();
+        }
+
+        function formatChangedValues(params) {
+          let json;
+          try {
+            json = JSON.stringify(params);
+          } catch (error) {
+            return String(params);
+          }
+          if (typeof json !== 'string') return String(params);
+          return json.length > 180 ? json.slice(0, 179) + '…' : json;
+        }
+
+        function recordContextEvent(params) {
+          const keys = changedKeyList(params);
+          contextEventCount++;
+          contextEvents.push({
+            seq: contextEventCount,
+            time: MCPAppShell.getTimestamp(),
+            keys: keys.length > 0 ? keys.join(', ') : '(no keys)',
+            detail: formatChangedValues(params)
+          });
+          if (contextEvents.length > MAX_CONTEXT_EVENTS) {
+            contextEvents.splice(0, contextEvents.length - MAX_CONTEXT_EVENTS);
+          }
+          renderContextLog();
+        }
+
+        function renderContextLog() {
+          const container = document.getElementById('hcc-log');
+          if (!container) return;
+
+          if (contextEvents.length === 0) {
+            container.innerHTML = '<div class="message-empty">No host-context-changed notifications yet. Resize the app or switch display mode to see traffic.</div>';
+            return;
           }
 
-          const keys = Object.keys(params);
-          return keys.length === 1 && keys[0] === 'containerDimensions';
+          let html = '';
+          // Newest first
+          for (let i = contextEvents.length - 1; i >= 0; i--) {
+            const entry = contextEvents[i];
+            html += '<div class="dm-log-entry">';
+            html += '<span class="message-time">' + MCPAppShell.escapeHtml(entry.time) + '</span>';
+            html += '<span class="dm-log-badge dm-log-type-notify">#' + entry.seq + '</span>';
+            html += '<span class="dm-log-mode">' + MCPAppShell.escapeHtml(entry.keys) + '</span>';
+            html += '<span class="dm-log-detail">' + MCPAppShell.escapeHtml(entry.detail) + '</span>';
+            html += '</div>';
+          }
+
+          container.innerHTML = html;
+        }
+
+        function scheduleRerun() {
+          if (rerunFrame !== null) return;
+          rerunFrame = window.requestAnimationFrame(function () {
+            rerunFrame = null;
+            runTests({ animate: false });
+          });
         }
 
         // Group tests by their top-level property
@@ -516,16 +588,16 @@
           MCPAppShell.setupInspectorFooter('inspect-host-info');
         });
 
-        // Listen for host context changes
+        // Listen for host context changes. Every notification is logged and
+        // re-validated, including containerDimensions-only ones: the shell has
+        // already merged the partial into getHostInfo(), so a re-run is what
+        // makes the containerDimensions rows track the real container.
+        // No isReady() gate: onInitialized already renders the validation from
+        // the handshake context, so it has to stay in sync from that point on,
+        // not only once the tool result lands. runTests() no-ops before then.
         window.addEventListener('mcp-host-context-changed', function (event) {
-          if (MCPAppShell.isReady()) {
-            if (shouldIgnoreHostContextChange(event.detail)) {
-              return;
-            }
-
-            // Re-run tests when meaningful host context changes
-            runTests({ animate: false });
-          }
+          recordContextEvent(event.detail);
+          scheduleRerun();
         });
       })();
     </script>

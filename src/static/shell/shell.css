@@ -204,6 +204,18 @@ body.display-mode-fullscreen
   overflow-y: auto;
 }
 
+/* Host Info inverts that: the change log below it is the fixed-height pane,
+   so the validation list is the one that grows and scrolls. */
+body.display-mode-fullscreen .host-info-grid > .terminal-section:first-child {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+body.display-mode-fullscreen .host-info-grid > .terminal-section:last-child {
+  flex: 0 0 auto;
+}
+
 /* PiP: the host gives us a small floating window, so the page itself is the
    scroller (html has overflow: auto). Let the fixed-height logs grow to their
    natural height so there is exactly one scrollbar; a nested scroller inside
@@ -1997,6 +2009,22 @@ h1 {
   flex-direction: column;
   gap: 0.25rem;
   height: 300px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* Host Info host-context-changed feed. Shares the .dm-log-* row styles but
+   keeps a fixed height in every display mode, including pip: this log grows
+   while the container is being resized, and a log that changed the page
+   height would feed size-changed back into the resize it is reporting on. */
+.hcc-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  height: 180px;
   overflow-y: auto;
   padding: 0.5rem;
   background: var(--bg-secondary);
