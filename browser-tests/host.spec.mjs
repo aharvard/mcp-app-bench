@@ -191,6 +191,45 @@ test("Host Info grades malformed and missing required values without penalizing 
   await expect(frame.locator(".test-grade-circle").first()).toHaveText("F")
 })
 
+test("Host Info tracks containerDimensions changes and logs every notification", async ({
+  page,
+}) => {
+  const frame = await open(page, "host-info", {
+    containerDimensions: { width: 600, height: 300 },
+  })
+  const dimensions = frame.locator('.test-group[data-group="containerDimensions"]')
+  await expect(dimensions).toContainText("600")
+  await expect(frame.locator("#hcc-log")).toContainText(
+    "No host-context-changed notifications yet"
+  )
+
+  // A containerDimensions-only partial is the common resize notification, and
+  // it drops height in favour of maxHeight the way a pip resize does.
+  await page.evaluate(() =>
+    send("ui/notifications/host-context-changed", {
+      containerDimensions: { width: 421, maxHeight: 512 },
+    })
+  )
+  await expect(dimensions).toContainText("421")
+  await expect(dimensions).toContainText("512")
+  await expect(dimensions).not.toContainText("600")
+  await expect(frame.locator(".dm-log-entry").first()).toContainText(
+    "containerDimensions"
+  )
+
+  await page.evaluate(() =>
+    send("ui/notifications/host-context-changed", {
+      displayMode: "pip",
+      containerDimensions: { width: 320, maxHeight: 400 },
+    })
+  )
+  await expect(dimensions).toContainText("320")
+  await expect(frame.locator(".dm-log-entry").first()).toContainText(
+    "containerDimensions, displayMode"
+  )
+  await expect(frame.locator(".dm-log-entry")).toHaveCount(2)
+})
+
 test("diagnostics render before result, then show cancellation reason and order", async ({
   page,
 }) => {
